@@ -11,9 +11,10 @@
 </head>
 <body>
   <h1>Scream maker</h1>
-  <p>Builds <code>scream.wav</code>: a soft music box for <code>LEAD</code> seconds, then the scream.
-  Convert it for the site with:<br>
-  <code>ffmpeg -i scream.wav -af "highpass=f=40,alimiter=limit=0.95:level=false" -codec:a libmp3lame -b:a 192k scream.mp3</code></p>
+  <p>Builds <code>scream.wav</code>: a soft music box for <code>LEAD</code> seconds, then a synthesised scream.
+  The site currently uses only the music box from this, with a recorded scream spliced in at <code>LEAD</code>:<br>
+  <code>ffmpeg -i scream.wav -i recorded.wav -filter_complex "[0:a]atrim=0:8.6,asetpts=PTS-STARTPTS[m];[1:a]atrim=START:START+3.4,asetpts=PTS-STARTPTS,afade=t=out:st=3.05:d=0.35,alimiter=limit=0.95:level=false[s];[m][s]concat=n=2:v=0:a=1,highpass=f=40" -codec:a libmp3lame -b:a 192k scream.mp3</code><br>
+  where <code>START</code> is where the recorded scream begins (0.465 s in the current one).</p>
   <button id="play" type="button">Play</button>
   <button id="dl" type="button">Download scream.wav</button>
   <script>

@@ -2,7 +2,10 @@
   // Timeline in seconds from the tap. Must match tools/make-scream.html,
   // which bakes the music box and scream into scream.mp3 on the same clock.
   const LEAD = 8.6;   // the calm part: music box while the letter types out
-  const SCARE = 2.8;  // how long the face stays up
+  const SCARE = 3.2;  // how long the face stays up
+  // Put the face up a hair before the scream: picture-first reads as one hit,
+  // sound-first reads as a lag.
+  const CUT_EARLY = 0.06;
   const SR = 44100;
 
   const $ = (s) => document.querySelector(s);
@@ -33,7 +36,7 @@
   // iPhones mute Web Audio when the silent switch is on, but not <audio>
   // elements ("media" playback), so it plays through an <audio> element and
   // Web Audio is only a fallback.
-  const SCREAM_URL = 'scream.mp3?v=5';
+  const SCREAM_URL = 'scream.mp3?v=7';
   const audio = new Audio(SCREAM_URL);
   audio.preload = 'auto';
   audio.setAttribute('playsinline', '');
@@ -172,8 +175,17 @@
 
     // One clock for everything: the audio's position when it's playing, so
     // the letter and the cut stay locked to the music; wall time otherwise.
+    // iPhones report currentTime in coarse steps, so instead of reading it
+    // raw (which made typing stutter and the cut land late) we anchor it to
+    // the wall clock and run smoothly from there. The earliest anchor is the
+    // freshest reading; re-anchor only if playback has clearly stalled.
+    let anchor = null;
     const clock = () => {
-      if (usingEl && !audio.paused && audio.currentTime > 0) return audio.currentTime;
+      if (usingEl && !audio.paused && audio.currentTime > 0) {
+        const a = performance.now() - audio.currentTime * 1000;
+        if (anchor === null || a < anchor || a - anchor > 400) anchor = a;
+        return (performance.now() - anchor) / 1000;
+      }
       if (liveStart) return (performance.now() - liveStart) / 1000;
       return (performance.now() - t0) / 1000;
     };
@@ -193,7 +205,7 @@
       // If the audio is slow to start, give it a moment so the face lands
       // with the scream; then go anyway.
       const wall = (performance.now() - t0) / 1000;
-      if (t >= LEAD || wall >= LEAD + 1.2) impact(live);
+      if (t >= LEAD - CUT_EARLY || wall >= LEAD + 1.2) impact(live);
       else requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
