@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>I have a question for you 🥺💌</title>
+  <meta name="description" content="hiii… i've been wanting to ask you something 👉👈">
+  <meta property="og:title" content="I have a question for you 🥺💌">
+  <meta property="og:description" content="hiii… i've been wanting to ask you something 👉👈">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#ffd6e7">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💌</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="hearts" aria-hidden="true"></div>
+
+  <main class="cute">
+    <div class="card" id="card">
+      <div class="ask">
+        <svg class="bear" viewBox="0 0 120 110" aria-hidden="true">
+          <circle cx="28" cy="30" r="18" fill="#f3b27a"/><circle cx="28" cy="30" r="9" fill="#ffd9e6"/>
+          <circle cx="92" cy="30" r="18" fill="#f3b27a"/><circle cx="92" cy="30" r="9" fill="#ffd9e6"/>
+          <ellipse cx="60" cy="64" rx="46" ry="42" fill="#f6bd88"/>
+          <ellipse cx="60" cy="78" rx="20" ry="15" fill="#fde3c8"/>
+          <ellipse cx="42" cy="60" rx="5" ry="6.5" fill="#3a2430"/><circle cx="43.6" cy="57.4" r="2" fill="#fff"/>
+          <ellipse cx="78" cy="60" rx="5" ry="6.5" fill="#3a2430"/><circle cx="79.6" cy="57.4" r="2" fill="#fff"/>
+          <ellipse cx="60" cy="72" rx="5" ry="3.5" fill="#3a2430"/>
+          <path d="M53 79 q3.5 4 7 0 q3.5 4 7 0" stroke="#3a2430" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+          <ellipse cx="30" cy="74" rx="8" ry="5" fill="#ff8fb1" opacity=".65"/>
+          <ellipse cx="90" cy="74" rx="8" ry="5" fill="#ff8fb1" opacity=".65"/>
+          <path d="M104 12c-3-6-12-4-11 3 1 5 11 11 11 11s10-6 11-11c1-7-8-9-11-3z" fill="#ff5c9a"/>
+        </svg>
+        <p class="hi">hiii 👉👈</p>
+        <h1 id="question">Will you go on a date with me?</h1>
+        <p class="sub">i've been wanting to ask you this for a while… 🥺</p>
+        <div class="buttons">
+          <button id="yes" type="button">Yes 💖</button>
+          <button id="no" type="button">No 😢</button>
+        </div>
+        <p id="from" class="from"></p>
+        <p class="hint">🎧 turn your sound on for a little surprise</p>
+      </div>
+      <div class="waiting" aria-live="polite">
+        <div class="beat">💗</div>
+        <p id="waitText">yayyy!! wait, one sec…</p>
+      </div>
+    </div>
+  </main>
+
+  <div id="scare" class="scare" aria-hidden="true">
+    <canvas id="static" width="160" height="100"></canvas>
+    <div class="vignette"></div>
+    <div id="faceWrap" class="face-wrap">
+      <svg id="face" viewBox="0 0 400 520" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <radialGradient id="skin" cx="50%" cy="38%" r="65%">
+            <stop offset="0" stop-color="#f1ece2"/>
+            <stop offset=".45" stop-color="#cfc6b6"/>
+            <stop offset=".8" stop-color="#6e655a"/>
+            <stop offset="1" stop-color="#1c1814"/>
+          </radialGradient>
+          <radialGradient id="mouthIn" cx="50%" cy="45%" r="60%">
+            <stop offset="0" stop-color="#000"/>
+            <stop offset=".7" stop-color="#120000"/>
+            <stop offset="1" stop-color="#3d0000"/>
+          </radialGradient>
+          <radialGradient id="glow">
+            <stop offset="0" stop-color="#fff"/>
+            <stop offset=".35" stop-color="#ff2a2a"/>
+            <stop offset="1" stop-color="#ff0000" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="warp" x="-10%" y="-10%" width="120%" height="120%">
+            <feTurbulence id="turb" type="fractalNoise" baseFrequency="0.015 0.03" numOctaves="2" seed="3" result="n"/>
+            <feDisplacementMap id="disp" in="SourceGraphic" in2="n" scale="16" xChannelSelector="R" yChannelSelector="G"/>
+          </filter>
+          <filter id="grain">
+            <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="3" seed="7"/>
+            <feColorMatrix type="saturate" values="0"/>
+          </filter>
+          <filter id="soft"><feGaussianBlur stdDeviation="7"/></filter>
+          <clipPath id="headClip">
+            <path d="M200 20C300 20 360 110 355 220C352 300 330 360 300 420C270 480 240 510 200 510C160 510 130 480 100 420C70 360 48 300 45 220C40 110 100 20 200 20Z"/>
+          </clipPath>
+        </defs>
+
+        <g filter="url(#warp)">
+          <path d="M200 20C300 20 360 110 355 220C352 300 330 360 300 420C270 480 240 510 200 510C160 510 130 480 100 420C70 360 48 300 45 220C40 110 100 20 200 20Z" fill="url(#skin)"/>
+          <rect width="400" height="520" filter="url(#grain)" clip-path="url(#headClip)" opacity=".35" style="mix-blend-mode:multiply"/>
+
+          <g stroke="#2b221c" stroke-width="1.6" fill="none" opacity=".7">
+            <path d="M205 100l-8 22 10 14-6 20"/>
+            <path d="M197 122l-18 10"/>
+            <path d="M300 150l-14 18 4 16"/>
+            <path d="M92 300l16 12-4 18 10 14"/>
+          </g>
+
+          <!-- sockets -->
+          <ellipse cx="135" cy="215" rx="62" ry="78" fill="#140c0a" filter="url(#soft)" transform="rotate(-14 135 215)"/>
+          <ellipse cx="265" cy="215" rx="62" ry="78" fill="#140c0a" filter="url(#soft)" transform="rotate(14 265 215)"/>
+          <ellipse cx="137" cy="220" rx="40" ry="56" fill="#000" transform="rotate(-14 137 220)"/>
+          <ellipse cx="263" cy="220" rx="40" ry="56" fill="#000" transform="rotate(14 263 220)"/>
+
+          <!-- blood tears -->
+          <g stroke="#4a0000" fill="none" stroke-linecap="round" opacity=".9">
+            <path d="M128 272C126 300 132 330 124 390" stroke-width="7"/>
+            <path d="M144 270C146 290 142 310 146 335" stroke-width="4"/>
+            <path d="M272 272C274 300 268 335 280 385" stroke-width="7"/>
+            <path d="M256 270C254 288 258 305 254 326" stroke-width="4"/>
+          </g>
+          <g fill="#4a0000"><circle cx="124" cy="392" r="5"/><circle cx="280" cy="387" r="5"/></g>
+
+          <!-- pupils -->
+          <g id="pupils">
+            <circle cx="140" cy="224" r="16" fill="url(#glow)"/><circle cx="140" cy="224" r="3.2" fill="#fff"/>
+            <circle cx="260" cy="224" r="16" fill="url(#glow)"/><circle cx="260" cy="224" r="3.2" fill="#fff"/>
+          </g>
+
+          <!-- nose -->
+          <ellipse cx="200" cy="300" rx="20" ry="26" fill="#2a1f19" filter="url(#soft)" opacity=".7"/>
+          <path d="M190 288L183 318L195 313Z" fill="#120b08"/>
+          <path d="M210 288L217 318L205 313Z" fill="#120b08"/>
+
+          <!-- mouth -->
+          <ellipse cx="200" cy="408" rx="70" ry="92" fill="#1a0f0c" filter="url(#soft)"/>
+          <ellipse cx="200" cy="405" rx="55" ry="78" fill="url(#mouthIn)"/>
+          <ellipse cx="200" cy="418" rx="28" ry="44" fill="#000"/>
+          <g id="teeth" fill="#d9cfb4" stroke="#3b2b1b" stroke-width="1.2" stroke-linejoin="round"></g>
+
+          <!-- hair -->
+          <path fill="#050505" d="M28 520C14 330 30 90 200 8C370 90 386 330 372 520L340 520C352 360 340 180 290 120C255 85 145 85 110 120C60 180 48 360 60 520Z"/>
+          <g stroke="#050505" fill="none" stroke-linecap="round">
+            <path d="M150 60C140 130 150 170 138 232" stroke-width="5"/>
+            <path d="M175 50C172 110 180 150 170 192" stroke-width="3"/>
+            <path d="M240 55C250 120 238 170 252 242" stroke-width="5"/>
+            <path d="M262 70C277 140 270 190 284 262" stroke-width="3.5"/>
+            <path d="M200 30C205 90 196 120 204 162" stroke-width="2.5"/>
+            <path d="M118 110C100 180 112 240 96 320" stroke-width="4"/>
+            <path d="M285 108C305 180 292 240 310 330" stroke-width="4"/>
+          </g>
+        </g>
+      </svg>
+    </div>
+    <div class="flash"></div>
+  </div>
+
+  <section id="reveal" class="reveal" hidden>
+    <div class="reveal-inner">
+      <p class="big">GOTCHA 😂</p>
+      <p class="sub2">you just got jumpscared 💀</p>
+      <div class="maker">
+        <p class="maker-title">prank someone else 😈</p>
+        <input id="prankTo" type="text" maxlength="30" placeholder="their name" autocomplete="off">
+        <input id="prankFrom" type="text" maxlength="30" placeholder="your name (optional)" autocomplete="off">
+        <button id="share" type="button">Get the link 💌</button>
+        <p id="shareMsg" class="share-msg"></p>
+      </div>
+      <button id="again" type="button" class="again">watch it again</button>
+    </div>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>
