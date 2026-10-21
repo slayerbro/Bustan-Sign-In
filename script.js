@@ -1,6 +1,8 @@
 (() => {
-  const LEAD = 1.4;    // seconds of cute "wait one sec…" before the scare hits
-  const SCREAM = 3.4;  // length of the scream
+  // Timeline in seconds from the tap. Must match tools/make-scream.html,
+  // which bakes the music box and scream into scream.mp3 on the same clock.
+  const LEAD = 8.6;   // the calm part: music box while the letter types out
+  const SCARE = 2.8;  // how long the face stays up
   const SR = 44100;
 
   const $ = (s) => document.querySelector(s);
@@ -45,17 +47,16 @@
     row(Math.PI * 0.15, Math.PI * 0.85, 8); // bottom
   })();
 
-  // ---------- the scream ----------
-  // A pre-made recording (tools/make-scream.html builds it). Synthesising it
-  // live came out differently per device — iPhones turned it into static —
-  // so every phone now plays the exact same file. It opens with LEAD seconds
-  // of silence: sound has to start inside the tap, and the silence covers the
-  // cute "wait, one sec…" moment.
+  // ---------- the sound ----------
+  // scream.mp3 (built by tools/make-scream.html) is one clip on the same clock
+  // as the page: a soft music box for LEAD seconds, then the scream. It has to
+  // start inside the tap (phones block sound otherwise), and the letter and the
+  // cut are timed off its playback position so they stay in sync.
   //
   // iPhones mute Web Audio when the silent switch is on, but not <audio>
   // elements ("media" playback), so it plays through an <audio> element and
   // Web Audio is only a fallback.
-  const SCREAM_URL = 'scream.mp3?v=3';
+  const SCREAM_URL = 'scream.mp3?v=5';
   const audio = new Audio(SCREAM_URL);
   audio.preload = 'auto';
   audio.setAttribute('playsinline', '');
@@ -102,126 +103,44 @@
     return ab;
   }
 
+  // ---------- the face, baked to a bitmap ----------
+  // The SVG's warp, blur and grain filters are slow on phones, so it's drawn
+  // once into a canvas while the cute page is up and shown as a still image.
   const card = $('#card'), scare = $('#scare'), faceWrap = $('#faceWrap'), face = $('#face');
-  const turb = $('#turb'), disp = $('#disp'), pupils = $('#pupils'), mouth = $('#mouth');
-  let fired = false;
 
-  // ---------- TV static: a few pre-made noise frames we flip between ----------
-  const staticFrames = [];
-  for (let k = 0; k < 3; k++) {
-    const c = document.createElement('canvas');
-    c.width = 90;
-    c.height = 160;
-    const x = c.getContext('2d');
-    const im = x.createImageData(c.width, c.height);
-    for (let i = 0; i < im.data.length; i += 4) {
-      const v = (Math.random() * 255) | 0;
-      im.data[i] = im.data[i + 1] = im.data[i + 2] = v;
-      im.data[i + 3] = 255;
-    }
-    x.putImageData(im, 0, 0);
-    $('#static').appendChild(c);
-    staticFrames.push(c);
-  }
-
-  // ---------- face frames ----------
-  // Live SVG filters (warp, blur, grain) are far too slow to redraw every
-  // frame on a phone; that's what made the scare freeze. So the face is
-  // rendered into a handful of bitmaps while the cute page is showing, and
-  // the scare only flips between them and moves them with GPU transforms.
-  const frames = { normal: [], lunge: [], negative: null };
-  const FRAME_W = 760, FRAME_H = Math.round(FRAME_W * 1.3), PAD = Math.round(FRAME_W * 0.04);
-
-  function setPose(jaw, px, py) {
-    turb.setAttribute('seed', String((Math.random() * 100) | 0));
-    disp.setAttribute('scale', String(10 + Math.random() * 30));
-    mouth.setAttribute('transform', `translate(200 340) scale(${1 + (jaw - 1) * 0.3} ${jaw}) translate(-200 -340)`);
-    pupils.setAttribute('transform', `translate(${px} ${py})`);
-  }
-
-  function svgImage() {
-    return new Promise((resolve, reject) => {
-      const clone = face.cloneNode(true);
-      clone.setAttribute('width', FRAME_W);
-      clone.setAttribute('height', FRAME_H);
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
-    });
-  }
-
-  // One reused scratch canvas: iOS Safari caps total canvas memory and is
-  // slow to free throwaway canvases.
-  const tintCanvas = document.createElement('canvas');
-  function tinted(img, color) {
-    const c = tintCanvas;
-    c.width = FRAME_W; // also clears it
-    c.height = FRAME_H;
-    const x = c.getContext('2d');
-    x.drawImage(img, 0, 0, FRAME_W, FRAME_H);
-    x.globalCompositeOperation = 'source-in';
-    x.fillStyle = color;
-    x.fillRect(0, 0, FRAME_W, FRAME_H);
-    return c;
-  }
-
-  // Bakes the red/cyan glitch split into the bitmap too.
-  async function renderFrame(jaw, px, py, negative) {
-    setPose(jaw, px, py);
-    const img = await svgImage();
-    const c = document.createElement('canvas');
-    c.width = FRAME_W + PAD * 2;
-    c.height = FRAME_H;
-    c.className = 'frame';
-    const x = c.getContext('2d');
-    const sp = PAD * (0.3 + Math.random() * 0.7);
-    x.globalAlpha = 0.75;
-    x.drawImage(tinted(img, 'rgb(255,0,40)'), PAD + sp, 0);
-    x.globalAlpha = 0.45;
-    x.drawImage(tinted(img, 'rgb(0,255,255)'), PAD - sp, 0);
-    x.globalAlpha = 1;
-    x.drawImage(img, PAD, 0, FRAME_W, FRAME_H);
-    if (negative) {
-      x.globalCompositeOperation = 'difference';
-      x.fillStyle = '#fff';
-      x.fillRect(0, 0, c.width, c.height);
-    }
-    faceWrap.appendChild(c);
-    return c;
-  }
-
-  const rnd = (a) => (Math.random() * 2 - 1) * a;
-  const nextTick = () => new Promise((r) => setTimeout(r, 30)); // let the page breathe between renders
-
-  (async function prerenderFrames() {
-    await new Promise((r) => setTimeout(r, 300));
-    try {
-      for (let i = 0; i < 5; i++) {
-        frames.normal.push(await renderFrame(1.05 + Math.random() * 0.25, rnd(9), rnd(7), false));
-        faceWrap.classList.add('baked'); // first bitmap is ready: stop showing the live SVG
-        await nextTick();
-      }
-      for (let i = 0; i < 3; i++) {
-        frames.lunge.push(await renderFrame(1.25 + Math.random() * 0.12, 0, 0, false));
-        await nextTick();
-      }
-      frames.negative = await renderFrame(1.3, 0, 0, true);
-    } catch (e) {
-      // keep whatever rendered; the live SVG stays as a still fallback
-    }
-    tintCanvas.width = tintCanvas.height = 1;
-    setPose(1.1, 0, 0);
+  (function bakeFace() {
+    const W = 900, H = Math.round(W * 1.3);
+    $('#mouth').setAttribute('transform', 'translate(200 340) scale(1.08 1.28) translate(-200 -340)');
+    const clone = face.cloneNode(true);
+    clone.setAttribute('width', W);
+    clone.setAttribute('height', H);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = W;
+        c.height = H;
+        c.className = 'baked-face';
+        c.getContext('2d').drawImage(img, 0, 0, W, H);
+        faceWrap.appendChild(c);
+        faceWrap.classList.add('baked');
+      } catch (e) {} // the live SVG stays as the fallback
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
   })();
 
-  let shown = null;
-  function showFrame(c) {
-    if (!c || c === shown) return;
-    if (shown) shown.classList.remove('on');
-    c.classList.add('on');
-    shown = c;
-  }
-  const pick = (list) => list[(Math.random() * list.length) | 0];
+  // ---------- the letter ----------
+  // Calm, sweet, and small enough that they bring the phone closer to read it.
+  // The last line types slowly so the cut lands mid-sentence.
+  const LETTER = [
+    { at: 0.9, text: "i've never been good at saying this out loud,", size: 17, cps: 28 },
+    { at: 2.7, text: 'so i wrote it down for you instead.', size: 17, cps: 28 },
+    { at: 4.2, text: "there's something about me you don't know yet…", size: 15.5, cps: 26 },
+    { at: 6.0, text: 'come a little closer, it’s a secret', size: 14, cps: 22 },
+    { at: 7.6, text: 'the truth is, i’m not really', size: 12.5, cps: 11 },
+  ];
+
+  let fired = false;
 
   function goFullscreen() {
     const el = document.documentElement;
@@ -251,6 +170,7 @@
     // Sound has to start inside the tap — phones block it otherwise.
     forcePlaybackSession();
     let live = null;
+    let liveStart = 0;
 
     // Fallback only: Web Audio plus the silent clip so iPhones stay in media mode.
     const playLive = () => {
@@ -267,7 +187,9 @@
         const src = live.createBufferSource();
         src.buffer = buf;
         src.connect(live.destination);
-        src.start(0, Math.min((performance.now() - t0) / 1000, LEAD));
+        const offset = Math.min((performance.now() - t0) / 1000, LEAD);
+        src.start(0, offset);
+        liveStart = performance.now() - offset * 1000;
       }, () => {});
     };
 
@@ -278,113 +200,65 @@
 
     goFullscreen();
 
-    $('#waitText').textContent = kind === 'yes'
-      ? 'yayyy!! wait, one sec… 💌'
-      : 'aww okay… one last thing 🥺';
-    card.classList.add('is-waiting');
+    $('#letterTitle').textContent = kind === 'yes'
+      ? 'yayyy 🥹 okay wait, i wrote you something'
+      : 'okay… but read this first? 🥺';
+    const body = $('#letterBody');
+    body.textContent = '';
+    const lines = LETTER.map((l) => {
+      const el = document.createElement('p');
+      el.style.fontSize = l.size + 'px';
+      body.appendChild(el);
+      return { ...l, el, shown: -1 };
+    });
+    card.classList.add('is-reading');
 
-    // "did I just see something?" — a split-second glimpse before the real hit
-    setTimeout(() => {
-      showFrame(frames.normal[0]);
-      scare.classList.add('peek');
-      setTimeout(() => scare.classList.remove('peek'), 70);
-    }, 750);
-
-    const wait = () => {
-      const elapsed = (performance.now() - t0) / 1000;
-      const audioHit = usingEl && !audio.paused && audio.currentTime >= LEAD - 0.03;
-      // give a slow-loading file a moment so the face lands with the scream
-      if (audioHit || elapsed >= LEAD + (usingEl ? 0.8 : 0.25)) impact(live);
-      else requestAnimationFrame(wait);
+    // One clock for everything: the audio's position when it's playing, so
+    // the letter and the cut stay locked to the music; wall time otherwise.
+    const clock = () => {
+      if (usingEl && !audio.paused && audio.currentTime > 0) return audio.currentTime;
+      if (liveStart) return (performance.now() - liveStart) / 1000;
+      return (performance.now() - t0) / 1000;
     };
-    requestAnimationFrame(wait);
-  }
 
-  const easeOut = (x) => 1 - Math.pow(1 - x, 3);
+    const tick = () => {
+      const t = clock();
+      let active = -1;
+      lines.forEach((l, i) => { if (t >= l.at) active = i; });
+      lines.forEach((l, i) => {
+        const n = Math.max(0, Math.min(l.text.length, Math.floor((t - l.at) * l.cps)));
+        if (t >= l.at && n !== l.shown) {
+          l.shown = n;
+          l.el.textContent = l.text.slice(0, n);
+        }
+        l.el.classList.toggle('typing', i === active); // caret on the line being written
+      });
+      // If the audio is slow to start, give it a moment so the face lands
+      // with the scream; then go anyway.
+      const wall = (performance.now() - t0) / 1000;
+      if (t >= LEAD || wall >= LEAD + 1.2) impact(live);
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
 
   function impact(live) {
     clearInterval(heartTimer);
-    scare.classList.remove('out', 'peek');
     scare.classList.add('on');
-    if (navigator.vibrate) navigator.vibrate([400, 60, 600, 60, 900, 60, 1200]);
-
-    const start = performance.now();
-    let lastSwap = 0;
-    let frozenUntil = 0;
-    let tilt = 0;
-    let negativeUntil = 0;
-    let staticIdx = 0;
-
-    showFrame(frames.normal[0]);
-
-    function frame(now) {
-      const t = (now - start) / 1000;
-
-      let s;
-      if (t < 0.14) s = 0.25 + 0.9 * easeOut(t / 0.14);
-      else if (t < 1.7) s = 1.15 + Math.sin(t * 40) * 0.03;
-      else if (t < 1.85) s = 1.15 + 0.75 * easeOut((t - 1.7) / 0.15);
-      else s = 1.9 + Math.sin(t * 50) * 0.04;
-
-      // one negative-image hit on the lunge
-      if (!negativeUntil && t >= 1.7 && frames.negative) {
-        negativeUntil = now + 90;
-        scare.classList.add('negative');
-        showFrame(frames.negative);
-      } else if (negativeUntil && now >= negativeUntil && scare.classList.contains('negative')) {
-        scare.classList.remove('negative');
-        lastSwap = 0; // swap off the negative frame right away
-      }
-
-      // Every so often the face freezes for a beat, then snaps — like the
-      // video is choking on it. Unnatural stillness reads as creepier than motion.
-      if (now >= frozenUntil) {
-        if (t > 0.3 && Math.random() < 0.035) frozenUntil = now + 90 + Math.random() * 120;
-        if (Math.random() < 0.025) tilt = (Math.random() < 0.5 ? -1 : 1) * (10 + Math.random() * 12); // neck snap
-        else tilt *= 0.9;
-
-        const shake = t < 0.25 || (t > 1.7 && t < 1.95) ? 30 : 13;
-        let dx = (Math.random() * 2 - 1) * shake;
-        const dy = (Math.random() * 2 - 1) * shake;
-        const rot = tilt + (Math.random() * 2 - 1) * (shake / 6);
-        if (Math.random() < 0.06) dx += (Math.random() < 0.5 ? -1 : 1) * 80; // glitch jump
-        faceWrap.style.transform = `translate3d(${dx}px, ${dy}px, 0) rotate(${rot}deg) scale(${s})`;
-
-        // Swap to another baked pose: the warp, jaw, pupils and glitch split
-        // all change together. Wider jaw and locked-on eyes after the lunge.
-        if (now - lastSwap > 70 && now >= negativeUntil) {
-          lastSwap = now;
-          const pool = t > 1.7 && frames.lunge.length ? frames.lunge : frames.normal;
-          if (pool.length > 1) {
-            let next;
-            do next = pick(pool); while (next === shown);
-            showFrame(next);
-          } else {
-            showFrame(pool[0]);
-          }
-        }
-      }
-
-      staticFrames[staticIdx].classList.remove('on');
-      staticIdx = (staticIdx + 1) % staticFrames.length;
-      staticFrames[staticIdx].classList.add('on');
-
-      if (t < SCREAM - 0.2) requestAnimationFrame(frame);
-      else finish(live);
-    }
-    requestAnimationFrame(frame);
+    if (navigator.vibrate) navigator.vibrate([600, 80, 900, 80, 1200]);
+    setTimeout(() => finish(live), SCARE * 1000);
   }
 
   function finish(live) {
-    $('#reveal').hidden = false; // sits under the scare, so it fades to black, not pink
-    scare.classList.add('out');
+    // hard cut to black, a beat of nothing, then the reveal
+    scare.classList.add('black');
     setTimeout(() => {
-      scare.classList.remove('on', 'out', 'negative');
-      faceWrap.style.transform = '';
+      $('#reveal').hidden = false;
+      scare.classList.remove('on', 'black');
       exitFullscreen();
       if (live && live.close) live.close().catch(() => {});
       silence.pause();
-    }, 500);
+    }, 450);
   }
 
   $('#yes').addEventListener('click', () => answer('yes'));
@@ -392,7 +266,7 @@
 
   $('#again').addEventListener('click', () => {
     $('#reveal').hidden = true;
-    card.classList.remove('is-waiting');
+    card.classList.remove('is-reading');
     fired = false;
   });
 

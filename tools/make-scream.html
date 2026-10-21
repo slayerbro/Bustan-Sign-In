@@ -11,24 +11,15 @@
 </head>
 <body>
   <h1>Scream maker</h1>
-  <p>Builds <code>scream.wav</code>. Convert it for the site with:<br>
-  <code>ffmpeg -i scream.wav -codec:a libmp3lame -b:a 192k scream.mp3</code></p>
+  <p>Builds <code>scream.wav</code>: a soft music box for <code>LEAD</code> seconds, then the scream.
+  Convert it for the site with:<br>
+  <code>ffmpeg -i scream.wav -af "highpass=f=40,alimiter=limit=0.95:level=false" -codec:a libmp3lame -b:a 192k scream.mp3</code></p>
   <button id="play" type="button">Play</button>
   <button id="dl" type="button">Download scream.wav</button>
   <script>
-  const LEAD = 1.4;    // silence before the scream; must match LEAD in script.js
-  const SCREAM = 3.4;  // must match SCREAM in script.js
+  const LEAD = 8.6;    // must match LEAD in script.js
+  const SCREAM = 3.0;  // scream length (the face stays up SCARE = 2.8 s)
   const SR = 44100;
-
-  // ---------- scream synth ----------
-  function distortionCurve(k) {
-    const n = 4096, c = new Float32Array(n), norm = Math.tanh(k);
-    for (let i = 0; i < n; i++) {
-      const x = (i * 2) / n - 1;
-      c[i] = Math.tanh(k * x) / norm;
-    }
-    return c;
-  }
 
   function noiseSource(ctx, secs) {
     const b = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * secs), ctx.sampleRate);
@@ -39,183 +30,178 @@
     return s;
   }
 
-  function envelope(ctx, t0, peak, attack, hold, release) {
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(peak, t0 + attack);
-    g.gain.setValueAtTime(peak, t0 + hold);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + hold + release);
-    return g;
+  function softClip(k) {
+    const n = 4096, c = new Float32Array(n), norm = Math.tanh(k);
+    for (let i = 0; i < n; i++) c[i] = Math.tanh(k * ((i * 2) / n - 1)) / norm;
+    return c;
   }
 
-  // Horror "stinger": a dissonant string-like cluster stab plus a mid-range
-  // crack. Both sit where tiny phone speakers are loud; the boom is a bonus
-  // for laptops and headphones.
-  function stinger(ctx, t, dest, size) {
-    [311, 330, 349, 370, 740, 784].forEach((f) => {
-      const o = ctx.createOscillator();
-      o.type = 'sawtooth';
-      o.frequency.setValueAtTime(f, t);
-      o.frequency.exponentialRampToValueAtTime(f * 0.96, t + 1.3);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.22 * size, t + 0.006);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
-      o.connect(g).connect(dest);
-      o.start(t);
-      o.stop(t + 1.35);
-    });
+  const midi = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
-    const crack = noiseSource(ctx, 0.35);
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = 1400;
-    bp.Q.value = 0.7;
-    const cg = ctx.createGain();
-    cg.gain.setValueAtTime(1.4 * size, t);
-    cg.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-    crack.connect(bp).connect(cg).connect(dest);
-    crack.start(t);
-    crack.stop(t + 0.35);
+  // ---------- the calm part: a sweet music box ----------
+  // Deliberately innocent so nothing gives the scare away. It's cut dead at
+  // LEAD — the sudden silence-into-scream is part of the shock.
+  function musicBox(ctx, dest) {
+    const bus = ctx.createGain();
+    bus.gain.setValueAtTime(1, 0);
+    bus.gain.setValueAtTime(1, LEAD - 0.004);
+    bus.gain.linearRampToValueAtTime(0, LEAD);
+    bus.connect(dest);
 
-    const boom = ctx.createOscillator();
-    boom.frequency.setValueAtTime(150, t);
-    boom.frequency.exponentialRampToValueAtTime(30, t + 0.6);
-    const bg = ctx.createGain();
-    bg.gain.setValueAtTime(1.3 * size, t);
-    bg.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
-    boom.connect(bg).connect(dest);
-    boom.start(t);
-    boom.stop(t + 1);
-  }
+    // a little echo for a room feel
+    const delay = ctx.createDelay();
+    delay.delayTime.value = 0.23;
+    const fb = ctx.createGain();
+    fb.gain.value = 0.28;
+    delay.connect(fb).connect(delay);
+    delay.connect(bus);
 
-  function buildScream(ctx, t0, dest) {
-    const D = SCREAM;
-    const end = t0 + D + 0.05;
-
-    const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -20;
-    comp.knee.value = 4;
-    comp.ratio.value = 12;
-    comp.attack.value = 0.002;
-    comp.release.value = 0.12;
-    const master = ctx.createGain();
-    master.gain.value = 1.2;
-    comp.connect(master).connect(dest);
-
-    // Gentle saturation only — heavy distortion is what turned into "static".
-    const satIn = ctx.createGain();
-    satIn.gain.value = 1.1;
-    const sat = ctx.createWaveShaper();
-    sat.curve = distortionCurve(2.5);
-    sat.oversample = '4x';
-    satIn.connect(sat).connect(comp);
-
-    // Pitch contour of a shrill human scream (~1.1 kHz, peaking on the lunge).
-    const contour = (p, k) => {
-      p.setValueAtTime(700 * k, t0);
-      p.exponentialRampToValueAtTime(1150 * k, t0 + 0.15);
-      p.linearRampToValueAtTime(1080 * k, t0 + 0.8);
-      p.linearRampToValueAtTime(1220 * k, t0 + 1.55);
-      p.exponentialRampToValueAtTime(1450 * k, t0 + 1.75);
-      p.linearRampToValueAtTime(1250 * k, t0 + 2.6);
-      p.exponentialRampToValueAtTime(780 * k, t0 + D);
+    const pluck = (m, t, vel) => {
+      const f = midi(m);
+      [[1, 1], [2.005, 0.35], [3.01, 0.12], [4.2, 0.06]].forEach(([mult, amp]) => {
+        const o = ctx.createOscillator();
+        o.frequency.value = f * mult;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vel * amp, t + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6 / mult);
+        o.connect(g);
+        g.connect(bus);
+        g.connect(delay);
+        o.start(t);
+        o.stop(t + 1.7);
+      });
     };
 
-    // Slow random wobble so the voice sounds strained, not synthetic.
-    const jitter = noiseSource(ctx, D + 0.2);
-    const jlp = ctx.createBiquadFilter();
-    jlp.type = 'lowpass';
-    jlp.frequency.value = 18;
-    jitter.connect(jlp);
-    jitter.start(t0);
-    jitter.stop(end);
+    // an original little lullaby in C major, 0.3 s per step
+    const melody = [76, 79, 84, 83, 79, 76, 74, 76, 77, 81, 84, 83, 81, 79, 76, 79,
+                    76, 79, 84, 88, 86, 84, 83, 79, 81, 77, 74, 79, 72];
+    const bass = [48, 53, 48, 55, 48, 53, 55, 48];
+    melody.forEach((m, i) => { if (i * 0.3 < LEAD) pluck(m, 0.15 + i * 0.3, 0.16); });
+    bass.forEach((m, i) => { if (i * 1.2 < LEAD) pluck(m, 0.15 + i * 1.2, 0.09); });
+  }
 
-    // "Roughness": fast amplitude flutter (70–95 Hz). It's the acoustic
-    // signature that makes real screams alarming.
+  // ---------- the scream ----------
+  // Modelled on a real screech: a harmonic stack around 400–550 Hz with a
+  // strained, uneven pitch and fast "roughness" flutter — not a clean synth tone.
+  function scream(ctx, t0, dest) {
+    const D = SCREAM, end = t0 + D + 0.05;
+
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -16;
+    comp.ratio.value = 8;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.12;
+    comp.connect(dest);
+
+    const sat = ctx.createWaveShaper();
+    sat.curve = softClip(2);
+    sat.oversample = '4x';
+    sat.connect(comp);
+
+    const contour = (p) => {
+      p.setValueAtTime(330, t0);
+      p.exponentialRampToValueAtTime(520, t0 + 0.09);
+      p.linearRampToValueAtTime(490, t0 + 0.7);
+      p.linearRampToValueAtTime(560, t0 + 1.4);
+      p.linearRampToValueAtTime(470, t0 + 2.2);
+      p.exponentialRampToValueAtTime(300, t0 + D);
+    };
+
+    // strain: slow random pitch wander
+    const wander = noiseSource(ctx, D + 0.2);
+    const wlp = ctx.createBiquadFilter();
+    wlp.type = 'lowpass';
+    wlp.frequency.value = 12;
+    wander.connect(wlp);
+    wander.start(t0);
+    wander.stop(end);
+
+    // roughness: fast amplitude flutter
     const rough = ctx.createGain();
-    rough.gain.value = 0.55;
+    rough.gain.value = 0.6;
     const am = ctx.createOscillator();
-    am.frequency.setValueAtTime(70, t0);
-    am.frequency.linearRampToValueAtTime(95, t0 + D);
-    const amDepth = ctx.createGain();
-    amDepth.gain.value = 0.45;
-    am.connect(amDepth).connect(rough.gain);
+    am.frequency.setValueAtTime(55, t0);
+    am.frequency.linearRampToValueAtTime(80, t0 + D);
+    const amg = ctx.createGain();
+    amg.gain.value = 0.4;
+    am.connect(amg).connect(rough.gain);
     am.start(t0);
     am.stop(end);
 
-    const voiceEnv = envelope(ctx, t0, 1, 0.03, D - 0.8, 0.8);
-    rough.connect(voiceEnv);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.exponentialRampToValueAtTime(1, t0 + 0.012);
+    env.gain.setValueAtTime(1, t0 + D - 0.7);
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + D);
+    rough.connect(env);
 
-    // "AAAAH" vowel formants
-    [[1000, 6, 1], [1550, 8, 0.8], [2900, 9, 0.7], [3900, 10, 0.4]].forEach(([f, q, g]) => {
+    // "EEAAAH" vowel, opening up as it goes
+    [[850, 950, 5, 1], [1500, 1250, 7, 0.75], [2700, 2500, 9, 0.6], [3500, 3300, 10, 0.35]].forEach(([fa, fb, q, g]) => {
       const bp = ctx.createBiquadFilter();
       bp.type = 'bandpass';
-      bp.frequency.setValueAtTime(f, t0);
-      bp.frequency.linearRampToValueAtTime(f * 1.1, t0 + 1.75);
-      bp.frequency.linearRampToValueAtTime(f, t0 + D);
+      bp.frequency.setValueAtTime(fa, t0);
+      bp.frequency.linearRampToValueAtTime(fb, t0 + 0.8);
       bp.Q.value = q;
       const gn = ctx.createGain();
-      gn.gain.value = g * 2;
-      voiceEnv.connect(bp).connect(gn).connect(satIn);
+      gn.gain.value = g * 2.2;
+      env.connect(bp).connect(gn).connect(sat);
     });
     const dry = ctx.createGain();
-    dry.gain.value = 0.25;
-    voiceEnv.connect(dry).connect(satIn);
+    dry.gain.value = 0.3;
+    env.connect(dry).connect(sat);
 
-    // Voices: a shrill scream plus a demonic octave-down layer underneath.
-    [
-      { k: 1, cents: 0, type: 'sawtooth', g: 0.5 },
-      { k: 1, cents: 9, type: 'sawtooth', g: 0.4 },
-      { k: 1, cents: -11, type: 'square', g: 0.2 },
-      { k: 0.5, cents: 0, type: 'sawtooth', g: 0.35 },
-      { k: 0.5, cents: 100, type: 'sawtooth', g: 0.25 }, // a semitone off — wrong on purpose
-    ].forEach(({ k, cents, type, g }, i) => {
+    [[0, 'sawtooth', 0.5], [7, 'sawtooth', 0.4], [-6, 'sawtooth', 0.4], [3, 'square', 0.15]].forEach(([cents, type, g], i) => {
       const o = ctx.createOscillator();
       o.type = type;
-      contour(o.frequency, k);
+      contour(o.frequency);
       o.detune.value = cents;
-
-      const jg = ctx.createGain();
-      jg.gain.value = 700 * k;
-      jlp.connect(jg).connect(o.frequency);
-
-      const lfo = ctx.createOscillator();
-      lfo.frequency.value = 6 + i * 0.7;
-      const lg = ctx.createGain();
-      lg.gain.value = 30 * k;
-      lfo.connect(lg).connect(o.frequency);
-
+      const wg = ctx.createGain();
+      wg.gain.value = 260;
+      wlp.connect(wg).connect(o.frequency);
+      const vib = ctx.createOscillator();
+      vib.frequency.value = 5.5 + i * 0.4;
+      const vg = ctx.createGain();
+      vg.gain.value = 14;
+      vib.connect(vg).connect(o.frequency);
       const og = ctx.createGain();
       og.gain.value = g;
       o.connect(og).connect(rough);
       o.start(t0); o.stop(end);
-      lfo.start(t0); lfo.stop(end);
+      vib.start(t0); vib.stop(end);
     });
 
-    // Piercing beating whistle around 3 kHz — where ears are most sensitive
-    // and phone speakers are loudest.
-    [2950, 3080].forEach((f) => {
-      const o = ctx.createOscillator();
-      o.frequency.setValueAtTime(f, t0);
-      o.frequency.linearRampToValueAtTime(f * 1.12, t0 + 1.75);
-      o.frequency.linearRampToValueAtTime(f * 0.95, t0 + D);
-      o.connect(envelope(ctx, t0, 0.16, 0.05, D - 0.9, 0.85)).connect(comp);
-      o.start(t0); o.stop(end);
-    });
-
-    // A little breath on top (kept quiet this time).
+    // breath and rasp
     const n = noiseSource(ctx, D + 0.1);
     const nbp = ctx.createBiquadFilter();
     nbp.type = 'bandpass';
-    nbp.frequency.value = 4500;
-    nbp.Q.value = 1;
-    n.connect(nbp).connect(envelope(ctx, t0, 0.12, 0.03, D - 0.9, 0.85)).connect(satIn);
+    nbp.frequency.value = 2800;
+    nbp.Q.value = 0.9;
+    const ng = ctx.createGain();
+    ng.gain.value = 0.1;
+    n.connect(nbp).connect(ng).connect(env);
     n.start(t0); n.stop(end);
 
-    // Hits: one on the jumpscare, one when the face lunges closer.
-    stinger(ctx, t0, comp, 1);
-    stinger(ctx, t0 + 1.7, comp, 0.85);
+    // the hit: a sharp crack and a thump right on the cut
+    const crack = noiseSource(ctx, 0.2);
+    const cbp = ctx.createBiquadFilter();
+    cbp.type = 'bandpass';
+    cbp.frequency.value = 1800;
+    cbp.Q.value = 0.6;
+    const cg = ctx.createGain();
+    cg.gain.setValueAtTime(1.2, t0);
+    cg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
+    crack.connect(cbp).connect(cg).connect(comp);
+    crack.start(t0); crack.stop(t0 + 0.2);
+
+    const thump = ctx.createOscillator();
+    thump.frequency.setValueAtTime(110, t0);
+    thump.frequency.exponentialRampToValueAtTime(40, t0 + 0.35);
+    const tg = ctx.createGain();
+    tg.gain.setValueAtTime(1.2, t0);
+    tg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.5);
+    thump.connect(tg).connect(comp);
+    thump.start(t0); thump.stop(t0 + 0.55);
   }
 
   function toWav(d) {
@@ -236,28 +222,28 @@
     return ab;
   }
 
-  // Renders the full clip (silent lead + scream), normalised and soft-limited.
+  // Music box + scream on one timeline, peak-normalised. The music sits far
+  // below the scream on purpose: the contrast is what makes it jump.
   async function renderScream() {
     const ctx = new OfflineAudioContext(1, Math.ceil(SR * (LEAD + SCREAM + 0.3)), SR);
-    buildScream(ctx, LEAD, ctx.destination);
+    musicBox(ctx, ctx.destination);
+    scream(ctx, LEAD, ctx.destination);
     const buf = await ctx.startRendering();
     const d = buf.getChannelData(0);
     let peak = 0;
     for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
-    if (peak > 0) for (let i = 0; i < d.length; i++) d[i] *= 1 / peak;
-    const drive = 1.8, norm = 0.99 / Math.tanh(drive);
-    for (let i = 0; i < d.length; i++) d[i] = Math.tanh(d[i] * drive) * norm;
+    if (peak > 0) for (let i = 0; i < d.length; i++) d[i] *= 0.97 / peak;
     return toWav(d);
   }
 
-  document.getElementById("play").onclick = async () => {
-    const url = URL.createObjectURL(new Blob([await renderScream()], { type: "audio/wav" }));
+  document.getElementById('play').onclick = async () => {
+    const url = URL.createObjectURL(new Blob([await renderScream()], { type: 'audio/wav' }));
     new Audio(url).play();
   };
-  document.getElementById("dl").onclick = async () => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([await renderScream()], { type: "audio/wav" }));
-    a.download = "scream.wav";
+  document.getElementById('dl').onclick = async () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([await renderScream()], { type: 'audio/wav' }));
+    a.download = 'scream.wav';
     a.click();
   };
   </script>
