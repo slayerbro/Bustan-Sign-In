@@ -161,8 +161,7 @@ button:active { transform: translateY(3px); }
 .reveal-inner { width: 100%; max-width: 360px; animation: pop .4s ease-out .45s backwards; }
 @keyframes pop { from { transform: scale(.85); opacity: 0; } }
 
-.big { font-size: 46px; font-weight: 600; }
-.sub2 { margin-top: 4px; font-size: 18px; color: #c9c3d6; }
+.big { font-size: 96px; line-height: 1; }
 
 .maker {
   margin-top: 28px;

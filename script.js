@@ -513,7 +513,7 @@
     if (navigator.share) {
       try {
         await navigator.share({ title: 'I have a question for you 🥺💌', url: link });
-        msg.textContent = 'sent 😈';
+        msg.textContent = 'sent';
         return;
       } catch (e) {
         if (e && e.name === 'AbortError') return;
@@ -521,7 +521,7 @@
     }
     try {
       await navigator.clipboard.writeText(link);
-      msg.textContent = 'link copied 😈 send it!';
+      msg.textContent = 'link copied';
     } catch (e) {
       msg.textContent = link;
     }
