@@ -24,29 +24,6 @@
   for (let i = 0; i < 12; i++) spawnHeart(Math.random() * 5);
   const heartTimer = setInterval(() => spawnHeart(), 650);
 
-  // ---------- jagged teeth around the mouth ----------
-  (function buildTeeth() {
-    const g = $('#teeth');
-    const NS = 'http://www.w3.org/2000/svg';
-    const cx = 200, cy = 405, rx = 55, ry = 78;
-    const pt = (a) => ({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) });
-    const row = (a0, a1, count) => {
-      const step = (a1 - a0) / count;
-      for (let i = 0; i < count; i++) {
-        const a = a0 + step * (i + 0.5);
-        const p1 = pt(a - step * 0.5), p2 = pt(a + step * 0.5), m = pt(a);
-        const dx = cx - m.x, dy = cy - m.y, dl = Math.hypot(dx, dy);
-        const len = 16 + Math.random() * 24;
-        const tip = { x: m.x + (dx / dl) * len + (Math.random() - 0.5) * 6, y: m.y + (dy / dl) * len };
-        const poly = document.createElementNS(NS, 'polygon');
-        poly.setAttribute('points', `${p1.x},${p1.y} ${p2.x},${p2.y} ${tip.x},${tip.y}`);
-        g.appendChild(poly);
-      }
-    };
-    row(Math.PI * 1.12, Math.PI * 1.88, 9); // top
-    row(Math.PI * 0.15, Math.PI * 0.85, 8); // bottom
-  })();
-
   // ---------- the sound ----------
   // scream.mp3 (built by tools/make-scream.html) is one clip on the same clock
   // as the page: a soft music box for LEAD seconds, then the scream. It has to
@@ -103,31 +80,11 @@
     return ab;
   }
 
-  // ---------- the face, baked to a bitmap ----------
-  // The SVG's warp, blur and grain filters are slow on phones, so it's drawn
-  // once into a canvas while the cute page is up and shown as a still image.
-  const card = $('#card'), scare = $('#scare'), faceWrap = $('#faceWrap'), face = $('#face');
-
-  (function bakeFace() {
-    const W = 900, H = Math.round(W * 1.3);
-    $('#mouth').setAttribute('transform', 'translate(200 340) scale(1.08 1.28) translate(-200 -340)');
-    const clone = face.cloneNode(true);
-    clone.setAttribute('width', W);
-    clone.setAttribute('height', H);
-    const img = new Image();
-    img.onload = () => {
-      try {
-        const c = document.createElement('canvas');
-        c.width = W;
-        c.height = H;
-        c.className = 'baked-face';
-        c.getContext('2d').drawImage(img, 0, 0, W, H);
-        faceWrap.appendChild(c);
-        faceWrap.classList.add('baked');
-      } catch (e) {} // the live SVG stays as the fallback
-    };
-    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
-  })();
+  // ---------- the face ----------
+  // Decode the photo up front so the cut is instant, with no half-loaded frame.
+  const card = $('#card'), scare = $('#scare');
+  const photo = $('#photo');
+  if (photo.decode) photo.decode().catch(() => {});
 
   // ---------- the letter ----------
   // Calm, sweet, and small enough that they bring the phone closer to read it.

@@ -97,32 +97,22 @@ button:active { transform: translateY(3px); }
   position: fixed;
   inset: 0;
   z-index: 50;
-  display: grid;
-  place-items: center;
   overflow: hidden;
   background: #000;
   visibility: hidden;
   pointer-events: none;
 }
 .scare.on { visibility: visible; }
-.scare > * { grid-area: 1 / 1; }
 
-/* absolutely centred so a face wider than the screen crops evenly on both sides */
-.face-wrap { position: absolute; left: 50%; top: 50%; display: grid; transform: translate(-50%, -50%); }
-.face-wrap > * { grid-area: 1 / 1; }
-/* cover the whole screen (the face is 400×520) */
-#face, .baked-face { display: block; width: max(100vw, calc(100vh * 0.7692)); height: auto; }
-.face-wrap.baked #face { display: none; }
-
-/* a slow creep toward you while it screams */
-.scare.on .face-wrap { animation: creep 3s linear forwards; }
-@keyframes creep {
-  from { transform: translate(-50%, -50%) scale(1); }
-  to { transform: translate(-50%, -50%) scale(1.08); }
-}
+/* the photo fills the screen, cropped evenly; it creeps slowly toward you */
+.photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; }
+/* on wide screens show the whole face; its black edges melt into the background */
+@media (min-aspect-ratio: 4/5) { .photo { object-fit: contain; object-position: 50% 50%; } }
+.scare.on .photo { animation: creep 3s linear forwards; }
+@keyframes creep { from { transform: scale(1); } to { transform: scale(1.08); } }
 
 /* hard cut to black before the reveal */
-.scare.black .face-wrap { visibility: hidden; }
+.scare.black .photo { visibility: hidden; }
 
 /* ---------- reveal ---------- */
 
