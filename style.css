@@ -80,7 +80,6 @@ button:active { transform: translateY(3px); }
   box-shadow: inset 0 0 0 2px #ffc1d8;
 }
 
-.from { min-height: 1em; margin-top: 10px; font-size: 15px; color: #c0577f; }
 .hint { margin-top: 12px; font-size: 12.5px; color: #a98597; }
 
 .waiting { display: none; padding: 30px 0 24px; }
@@ -164,29 +163,6 @@ button:active { transform: translateY(3px); }
   border-radius: 20px;
 }
 .maker-title { margin-bottom: 12px; font-weight: 500; }
-.maker input {
-  display: block;
-  width: 100%;
-  margin-bottom: 10px;
-  padding: 12px 14px;
-  font: inherit;
-  font-size: 16px;
-  color: #fff;
-  background: #0b0b0f;
-  border: 1px solid #34313f;
-  border-radius: 12px;
-  outline: none;
-}
-.maker input:focus { border-color: var(--pink); }
-#share {
-  width: 100%;
-  padding: 13px;
-  font-size: 17px;
-  font-weight: 600;
-  color: #fff;
-  background: var(--pink);
-  border-radius: 12px;
-}
 .share-msg { min-height: 1.2em; margin-top: 10px; font-size: 14px; color: #ff9cc2; word-break: break-all; }
 
 .again {

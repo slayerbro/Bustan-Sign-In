@@ -5,13 +5,6 @@
 
   const $ = (s) => document.querySelector(s);
 
-  // ---------- personalise via ?to=Name&from=Name ----------
-  const params = new URLSearchParams(location.search);
-  const to = (params.get('to') || '').trim().slice(0, 30);
-  const from = (params.get('from') || '').trim().slice(0, 30);
-  if (to) $('#question').textContent = `${to}, will you go on a date with me?`;
-  if (from) $('#from').textContent = `— ${from} 💌`;
-
   // ---------- floating hearts ----------
   const HEARTS = ['💖', '💕', '💗', '💓', '🌸', '✨'];
   function spawnHeart(delay = 0) {
@@ -381,12 +374,7 @@
 
   $('#share').addEventListener('click', async () => {
     const msg = $('#shareMsg');
-    const url = new URL(location.pathname, location.origin);
-    const t = $('#prankTo').value.trim();
-    const f = $('#prankFrom').value.trim();
-    if (t) url.searchParams.set('to', t);
-    if (f) url.searchParams.set('from', f);
-    const link = url.toString();
+    const link = location.origin + location.pathname;
 
     if (navigator.share) {
       try {

@@ -4,15 +4,7 @@ A cute "will you go on a date with me?" page. Both **Yes** and **No** set off a 
 
 - Made for phones: it goes full screen, vibrates on Android, and plays sound even with the iPhone silent switch on (iOS 16.4+).
 - The scream is generated in the browser, so there are no audio files.
-- After the scare, a "prank someone else" box builds a personalised link.
-
-## Personalise
-
-Add the person's name to the link:
-
-```
-https://<you>.github.io/<repo>/?to=Sarah&from=Alex
-```
+- After the scare, a "prank someone else" button shares the link.
 
 ## Host it on GitHub Pages
 
