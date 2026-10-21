@@ -1,4 +1,4 @@
-# Thursday Sign In
+# Bustan Sign in
 
 A prank page that asks "Do you need a Bustan sign in for Thursday?" Either answer leads to step 2, "Add your name to the sign in sheet". When they type the first letter of their name, the keyboard closes and a jumpscare video (`scare.mp4`) plays full screen with sound.
 

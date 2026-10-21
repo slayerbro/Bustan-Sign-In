@@ -129,7 +129,7 @@
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Thursday Sign In', url: link });
+        await navigator.share({ title: 'Bustan Sign in', url: link });
         msg.textContent = 'sent';
         return;
       } catch (e) {
