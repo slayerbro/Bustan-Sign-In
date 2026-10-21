@@ -128,7 +128,16 @@ button:active { transform: translateY(3px); }
   place-items: center;
   will-change: transform;
 }
-#face { display: block; width: min(100vw, 78vh); height: auto; }
+/* On tall phone screens the face spills past the edges so it fills the screen */
+#face { display: block; width: max(min(100vw, 78vh), 64vh); height: auto; }
+
+/* a one-frame glimpse of the face during the "wait, one sec…" */
+.scare.peek { visibility: visible; background: transparent; }
+.scare.peek > :not(.face-wrap) { display: none; }
+.scare.peek .face-wrap { opacity: .35; transform: scale(.9); }
+
+/* single negative-image hit when the face lunges */
+.scare.negative { filter: invert(1) hue-rotate(180deg) contrast(1.4); }
 
 .flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
 .scare.on .flash { animation: flash .28s ease-out; }
@@ -139,7 +148,7 @@ button:active { transform: translateY(3px); }
 .reveal {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 40; /* under the scare so the scare fades out onto it */
   display: grid;
   place-items: center;
   padding: 24px 16px;
@@ -149,7 +158,7 @@ button:active { transform: translateY(3px); }
   overflow-y: auto;
 }
 .reveal[hidden] { display: none; }
-.reveal-inner { width: 100%; max-width: 360px; animation: pop .4s ease-out; }
+.reveal-inner { width: 100%; max-width: 360px; animation: pop .4s ease-out .45s backwards; }
 @keyframes pop { from { transform: scale(.85); opacity: 0; } }
 
 .big { font-size: 46px; font-weight: 600; }

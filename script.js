@@ -73,116 +73,174 @@
     return g;
   }
 
-  function slam(ctx, t, dest, size) {
+  // Horror "stinger": a dissonant string-like cluster stab plus a mid-range
+  // crack. Both sit where tiny phone speakers are loud; the boom is a bonus
+  // for laptops and headphones.
+  function stinger(ctx, t, dest, size) {
+    [311, 330, 349, 370, 740, 784].forEach((f) => {
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f, t);
+      o.frequency.exponentialRampToValueAtTime(f * 0.96, t + 1.3);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.22 * size, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+      o.connect(g).connect(dest);
+      o.start(t);
+      o.stop(t + 1.35);
+    });
+
+    const crack = noiseSource(ctx, 0.35);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1400;
+    bp.Q.value = 0.7;
+    const cg = ctx.createGain();
+    cg.gain.setValueAtTime(1.4 * size, t);
+    cg.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    crack.connect(bp).connect(cg).connect(dest);
+    crack.start(t);
+    crack.stop(t + 0.35);
+
     const boom = ctx.createOscillator();
     boom.frequency.setValueAtTime(150, t);
     boom.frequency.exponentialRampToValueAtTime(30, t + 0.6);
     const bg = ctx.createGain();
-    bg.gain.setValueAtTime(1.6 * size, t);
+    bg.gain.setValueAtTime(1.3 * size, t);
     bg.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
     boom.connect(bg).connect(dest);
     boom.start(t);
     boom.stop(t + 1);
-
-    const hit = noiseSource(ctx, 0.4);
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = 1800;
-    const hg = ctx.createGain();
-    hg.gain.setValueAtTime(1.3 * size, t);
-    hg.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    hit.connect(lp).connect(hg).connect(dest);
-    hit.start(t);
-    hit.stop(t + 0.4);
   }
 
   function buildScream(ctx, t0, dest) {
     const D = SCREAM;
+    const end = t0 + D + 0.05;
 
     const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -18;
-    comp.knee.value = 6;
+    comp.threshold.value = -20;
+    comp.knee.value = 4;
     comp.ratio.value = 12;
     comp.attack.value = 0.002;
-    comp.release.value = 0.15;
+    comp.release.value = 0.12;
     const master = ctx.createGain();
-    master.gain.value = 1.4;
+    master.gain.value = 1.2;
     comp.connect(master).connect(dest);
 
-    const driveIn = ctx.createGain();
-    driveIn.gain.value = 2.2;
-    const drive = ctx.createWaveShaper();
-    drive.curve = distortionCurve(6);
-    drive.oversample = '4x';
-    driveIn.connect(drive).connect(comp);
+    // Gentle saturation only — heavy distortion is what turned into "static".
+    const satIn = ctx.createGain();
+    satIn.gain.value = 1.1;
+    const sat = ctx.createWaveShaper();
+    sat.curve = distortionCurve(2.5);
+    sat.oversample = '4x';
+    satIn.connect(sat).connect(comp);
 
-    // 1) the voice: detuned saws pushed through "AAAH" vowel formants
-    const voiceEnv = envelope(ctx, t0, 1, 0.04, D - 0.9, 0.9);
-    const formantBus = ctx.createGain();
-    voiceEnv.connect(formantBus);
-    [[900, 5, 1], [1300, 7, 0.8], [2700, 9, 0.55], [3600, 10, 0.35]].forEach(([f, q, g]) => {
+    // Pitch contour of a shrill human scream (~1.1 kHz, peaking on the lunge).
+    const contour = (p, k) => {
+      p.setValueAtTime(700 * k, t0);
+      p.exponentialRampToValueAtTime(1150 * k, t0 + 0.15);
+      p.linearRampToValueAtTime(1080 * k, t0 + 0.8);
+      p.linearRampToValueAtTime(1220 * k, t0 + 1.55);
+      p.exponentialRampToValueAtTime(1450 * k, t0 + 1.75);
+      p.linearRampToValueAtTime(1250 * k, t0 + 2.6);
+      p.exponentialRampToValueAtTime(780 * k, t0 + D);
+    };
+
+    // Slow random wobble so the voice sounds strained, not synthetic.
+    const jitter = noiseSource(ctx, D + 0.2);
+    const jlp = ctx.createBiquadFilter();
+    jlp.type = 'lowpass';
+    jlp.frequency.value = 18;
+    jitter.connect(jlp);
+    jitter.start(t0);
+    jitter.stop(end);
+
+    // "Roughness": fast amplitude flutter (70–95 Hz). It's the acoustic
+    // signature that makes real screams alarming.
+    const rough = ctx.createGain();
+    rough.gain.value = 0.55;
+    const am = ctx.createOscillator();
+    am.frequency.setValueAtTime(70, t0);
+    am.frequency.linearRampToValueAtTime(95, t0 + D);
+    const amDepth = ctx.createGain();
+    amDepth.gain.value = 0.45;
+    am.connect(amDepth).connect(rough.gain);
+    am.start(t0);
+    am.stop(end);
+
+    const voiceEnv = envelope(ctx, t0, 1, 0.03, D - 0.8, 0.8);
+    rough.connect(voiceEnv);
+
+    // "AAAAH" vowel formants
+    [[1000, 6, 1], [1550, 8, 0.8], [2900, 9, 0.7], [3900, 10, 0.4]].forEach(([f, q, g]) => {
       const bp = ctx.createBiquadFilter();
       bp.type = 'bandpass';
       bp.frequency.setValueAtTime(f, t0);
-      bp.frequency.linearRampToValueAtTime(f * 1.08, t0 + D);
+      bp.frequency.linearRampToValueAtTime(f * 1.1, t0 + 1.75);
+      bp.frequency.linearRampToValueAtTime(f, t0 + D);
       bp.Q.value = q;
       const gn = ctx.createGain();
-      gn.gain.value = g * 2.5;
-      formantBus.connect(bp).connect(gn).connect(driveIn);
+      gn.gain.value = g * 2;
+      voiceEnv.connect(bp).connect(gn).connect(satIn);
     });
-    const body = ctx.createGain();
-    body.gain.value = 0.18;
-    formantBus.connect(body).connect(driveIn);
+    const dry = ctx.createGain();
+    dry.gain.value = 0.25;
+    voiceEnv.connect(dry).connect(satIn);
 
-    const base = 560;
-    [0, -18, 11, 27, -33, 6].forEach((cents, i) => {
+    // Voices: a shrill scream plus a demonic octave-down layer underneath.
+    [
+      { k: 1, cents: 0, type: 'sawtooth', g: 0.5 },
+      { k: 1, cents: 9, type: 'sawtooth', g: 0.4 },
+      { k: 1, cents: -11, type: 'square', g: 0.2 },
+      { k: 0.5, cents: 0, type: 'sawtooth', g: 0.35 },
+      { k: 0.5, cents: 100, type: 'sawtooth', g: 0.25 }, // a semitone off — wrong on purpose
+    ].forEach(({ k, cents, type, g }, i) => {
       const o = ctx.createOscillator();
-      o.type = i % 3 === 2 ? 'square' : 'sawtooth';
-      const f = o.frequency;
-      f.setValueAtTime(base * 0.55, t0);
-      f.exponentialRampToValueAtTime(base * 1.55, t0 + 0.16);
-      f.linearRampToValueAtTime(base * 1.4, t0 + 0.9);
-      f.linearRampToValueAtTime(base * 1.75, t0 + 1.75);
-      f.linearRampToValueAtTime(base * 1.5, t0 + 2.5);
-      f.exponentialRampToValueAtTime(base * 0.6, t0 + D);
-      o.detune.value = cents * 2;
+      o.type = type;
+      contour(o.frequency, k);
+      o.detune.value = cents;
+
+      const jg = ctx.createGain();
+      jg.gain.value = 700 * k;
+      jlp.connect(jg).connect(o.frequency);
 
       const lfo = ctx.createOscillator();
-      lfo.frequency.value = 6.5 + i * 0.9;
+      lfo.frequency.value = 6 + i * 0.7;
       const lg = ctx.createGain();
-      lg.gain.value = 25 + i * 8;
-      lfo.connect(lg).connect(f);
+      lg.gain.value = 30 * k;
+      lfo.connect(lg).connect(o.frequency);
 
-      o.connect(voiceEnv);
-      o.start(t0); o.stop(t0 + D + 0.05);
-      lfo.start(t0); lfo.stop(t0 + D + 0.05);
+      const og = ctx.createGain();
+      og.gain.value = g;
+      o.connect(og).connect(rough);
+      o.start(t0); o.stop(end);
+      lfo.start(t0); lfo.stop(end);
     });
 
-    // 2) raspy breath / shriek
+    // Piercing beating whistle around 3 kHz — where ears are most sensitive
+    // and phone speakers are loudest.
+    [2950, 3080].forEach((f) => {
+      const o = ctx.createOscillator();
+      o.frequency.setValueAtTime(f, t0);
+      o.frequency.linearRampToValueAtTime(f * 1.12, t0 + 1.75);
+      o.frequency.linearRampToValueAtTime(f * 0.95, t0 + D);
+      o.connect(envelope(ctx, t0, 0.16, 0.05, D - 0.9, 0.85)).connect(comp);
+      o.start(t0); o.stop(end);
+    });
+
+    // A little breath on top (kept quiet this time).
     const n = noiseSource(ctx, D + 0.1);
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = 3200;
-    bp.Q.value = 0.8;
-    n.connect(bp).connect(envelope(ctx, t0, 0.9, 0.03, D - 0.9, 0.9)).connect(driveIn);
-    n.start(t0); n.stop(t0 + D + 0.1);
+    const nbp = ctx.createBiquadFilter();
+    nbp.type = 'bandpass';
+    nbp.frequency.value = 4500;
+    nbp.Q.value = 1;
+    n.connect(nbp).connect(envelope(ctx, t0, 0.12, 0.03, D - 0.9, 0.85)).connect(satIn);
+    n.start(t0); n.stop(end);
 
-    // 3) metallic FM screech on top
-    const car = ctx.createOscillator();
-    car.frequency.setValueAtTime(1900, t0);
-    car.frequency.linearRampToValueAtTime(2600, t0 + D);
-    const mod = ctx.createOscillator();
-    mod.frequency.value = 317;
-    const mg = ctx.createGain();
-    mg.gain.value = 1400;
-    mod.connect(mg).connect(car.frequency);
-    car.connect(envelope(ctx, t0, 0.35, 0.05, D - 1, 1)).connect(driveIn);
-    car.start(t0); car.stop(t0 + D);
-    mod.start(t0); mod.stop(t0 + D);
-
-    // 4) impact slams (second one lines up with the face lunging closer)
-    slam(ctx, t0, comp, 1);
-    slam(ctx, t0 + 1.7, comp, 0.8);
+    // Hits: one on the jumpscare, one when the face lunges closer.
+    stinger(ctx, t0, comp, 1);
+    stinger(ctx, t0 + 1.7, comp, 0.85);
   }
 
   // iPhones mute Web Audio when the silent switch is on, but not <audio>
@@ -246,7 +304,10 @@
     const d = buf.getChannelData(0);
     let peak = 0;
     for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
-    if (peak > 0) for (let i = 0; i < d.length; i++) d[i] *= 0.99 / peak;
+    if (peak > 0) for (let i = 0; i < d.length; i++) d[i] *= 1 / peak;
+    // soft-limit so it's loud all the way through, not just on the peaks
+    const drive = 1.8, norm = 0.99 / Math.tanh(drive);
+    for (let i = 0; i < d.length; i++) d[i] = Math.tanh(d[i] * drive) * norm;
     screamBuffer = buf;
     // data: URL rather than blob: — some iOS versions won't play blob audio
     audio.src = wavDataUrl(d);
@@ -269,7 +330,7 @@
 
   // ---------- flow ----------
   const card = $('#card'), scare = $('#scare'), faceWrap = $('#faceWrap'), face = $('#face');
-  const turb = $('#turb'), disp = $('#disp'), pupils = $('#pupils');
+  const turb = $('#turb'), disp = $('#disp'), pupils = $('#pupils'), mouth = $('#mouth');
   let fired = false;
 
   function goFullscreen() {
@@ -339,6 +400,12 @@
       : 'aww okay… one last thing 🥺';
     card.classList.add('is-waiting');
 
+    // "did I just see something?" — a split-second glimpse before the real hit
+    setTimeout(() => {
+      scare.classList.add('peek');
+      setTimeout(() => scare.classList.remove('peek'), 70);
+    }, 750);
+
     const wait = () => {
       const elapsed = (performance.now() - t0) / 1000;
       const audioHit = usingEl && !audio.paused && audio.currentTime >= LEAD - 0.03;
@@ -352,12 +419,15 @@
 
   function impact(live) {
     clearInterval(heartTimer);
-    scare.classList.remove('out');
+    scare.classList.remove('out', 'peek');
     scare.classList.add('on');
     if (navigator.vibrate) navigator.vibrate([400, 60, 600, 60, 900, 60, 1200]);
 
     const start = performance.now();
     let lastGlitch = 0;
+    let frozenUntil = 0;
+    let tilt = 0;
+    let negativeDone = false;
 
     function frame(now) {
       const t = (now - start) / 1000;
@@ -368,12 +438,36 @@
       else if (t < 1.85) s = 1.15 + 0.75 * easeOut((t - 1.7) / 0.15);
       else s = 1.9 + Math.sin(t * 50) * 0.04;
 
-      const shake = t < 0.25 || (t > 1.7 && t < 1.95) ? 30 : 13;
-      let dx = (Math.random() * 2 - 1) * shake;
-      const dy = (Math.random() * 2 - 1) * shake;
-      const rot = (Math.random() * 2 - 1) * (shake / 6);
-      if (Math.random() < 0.06) dx += (Math.random() < 0.5 ? -1 : 1) * 80; // glitch jump
-      faceWrap.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg) scale(${s})`;
+      // one negative-image hit on the lunge
+      if (!negativeDone && t >= 1.7) {
+        negativeDone = true;
+        scare.classList.add('negative');
+        setTimeout(() => scare.classList.remove('negative'), 90);
+      }
+
+      // Every so often the face freezes for a beat, then snaps — like the
+      // video is choking on it. Unnatural stillness reads as creepier than motion.
+      if (now >= frozenUntil) {
+        if (t > 0.3 && Math.random() < 0.035) frozenUntil = now + 90 + Math.random() * 120;
+        if (Math.random() < 0.025) tilt = (Math.random() < 0.5 ? -1 : 1) * (10 + Math.random() * 12); // neck snap
+        else tilt *= 0.9;
+
+        const shake = t < 0.25 || (t > 1.7 && t < 1.95) ? 30 : 13;
+        let dx = (Math.random() * 2 - 1) * shake;
+        const dy = (Math.random() * 2 - 1) * shake;
+        const rot = tilt + (Math.random() * 2 - 1) * (shake / 6);
+        if (Math.random() < 0.06) dx += (Math.random() < 0.5 ? -1 : 1) * 80; // glitch jump
+        faceWrap.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg) scale(${s})`;
+
+        // jaw stretches open, wider on the lunge
+        const jaw = (t > 1.7 ? 1.25 : 1.05 + Math.min(t, 1) * 0.15) + Math.random() * 0.12;
+        mouth.setAttribute('transform', `translate(200 340) scale(${1 + (jaw - 1) * 0.3} ${jaw}) translate(-200 -340)`);
+
+        // pupils dart around, then lock onto you
+        const px = t > 1.7 ? 0 : (Math.random() * 2 - 1) * 9;
+        const py = t > 1.7 ? 0 : (Math.random() * 2 - 1) * 7;
+        pupils.setAttribute('transform', `translate(${px} ${py})`);
+      }
 
       if (now - lastGlitch > 60) {
         lastGlitch = now;
@@ -392,6 +486,7 @@
   }
 
   function finish(live) {
+    $('#reveal').hidden = false; // sits under the scare, so it fades to black, not pink
     scare.classList.add('out');
     setTimeout(() => {
       scare.classList.remove('on', 'out');
@@ -399,7 +494,6 @@
       exitFullscreen();
       if (live && live.close) live.close().catch(() => {});
       silence.pause();
-      $('#reveal').hidden = false;
     }, 500);
   }
 
