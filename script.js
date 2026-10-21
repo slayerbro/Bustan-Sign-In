@@ -1,7 +1,7 @@
 (() => {
   // Timeline in seconds from the tap. Must match tools/make-scream.html,
   // which bakes the music box and scream into scream.mp3 on the same clock.
-  const LEAD = 8.6;   // the calm part: music box while the letter types out
+  const LEAD = 8.6;   // the calm part: music box while the sign in "loads"
   const SCARE = 3.2;  // how long the face stays up
   // Put the face up a hair before the scream: picture-first reads as one hit,
   // sound-first reads as a lag.
@@ -10,27 +10,10 @@
 
   const $ = (s) => document.querySelector(s);
 
-  // ---------- floating hearts ----------
-  const HEARTS = ['💖', '💕', '💗', '💓', '🌸', '✨'];
-  function spawnHeart(delay = 0) {
-    const h = document.createElement('span');
-    h.className = 'float-heart';
-    h.textContent = HEARTS[(Math.random() * HEARTS.length) | 0];
-    h.style.left = Math.random() * 100 + 'vw';
-    h.style.fontSize = 14 + Math.random() * 22 + 'px';
-    const dur = 6 + Math.random() * 6;
-    h.style.animationDuration = dur + 's';
-    h.style.animationDelay = delay + 's';
-    $('#hearts').appendChild(h);
-    setTimeout(() => h.remove(), (dur + delay) * 1000 + 100);
-  }
-  for (let i = 0; i < 12; i++) spawnHeart(Math.random() * 5);
-  const heartTimer = setInterval(() => spawnHeart(), 650);
-
   // ---------- the sound ----------
   // scream.mp3 (built by tools/make-scream.html) is one clip on the same clock
   // as the page: a soft music box for LEAD seconds, then the scream. It has to
-  // start inside the tap (phones block sound otherwise), and the letter and the
+  // start inside the tap (phones block sound otherwise), and the build-up and the
   // cut are timed off its playback position so they stay in sync.
   //
   // iPhones mute Web Audio when the silent switch is on, but not <audio>
@@ -82,23 +65,28 @@
     }
     return ab;
   }
-
   // ---------- the face ----------
-  // Decode the photo up front so the cut is instant, with no half-loaded frame.
+  // Decode the photos up front so the cut is instant, with no half-loaded frame.
   const card = $('#card'), scare = $('#scare');
-  const photo = $('#photo');
-  if (photo.decode) photo.decode().catch(() => {});
+  document.querySelectorAll('.photo').forEach((img) => { if (img.decode) img.decode().catch(() => {}); });
 
-  // ---------- the letter ----------
-  // Calm, sweet, and small enough that they bring the phone closer to read it.
-  // The last line types slowly so the cut lands mid-sentence.
-  const LETTER = [
-    { at: 0.9, text: "i've never been good at saying this out loud,", size: 17, cps: 28 },
-    { at: 2.7, text: 'so i wrote it down for you instead.', size: 17, cps: 28 },
-    { at: 4.2, text: "there's something about me you don't know yet…", size: 15.5, cps: 26 },
-    { at: 6.0, text: 'come a little closer, it’s a secret', size: 14, cps: 22 },
-    { at: 7.6, text: 'the truth is, i’m not really', size: 12.5, cps: 11 },
+  // ---------- the build-up ----------
+  // A believable "getting your sign in ready" screen. It ends with a code
+  // typing out slowly in small print, so they're staring closely when it cuts.
+  const STEPS = [
+    { at: 0.5, done: 1.9, text: "Checking Thursday's list" },
+    { at: 2.0, done: 3.5, text: 'Finding your name' },
+    { at: 3.6, done: 5.1, text: 'Saving your answer' },
+    { at: 5.2, done: Infinity, text: 'Generating your confirmation code' },
   ];
+  const FINE_AT = 6.0;
+  const FINE = 'Your code appears below. Look closely, it’s only shown once.';
+  const CODE_AT = 7.0;
+  const CODE = 'BST-4719-TH';
+  const CODE_CPS = 5; // slow, so the cut lands mid-code
+
+  const bar = $('#barFill'), list = $('#steps'), fine = $('#fine');
+  const codeBox = $('#codeBox'), codeEl = $('#code');
 
   let fired = false;
 
@@ -120,6 +108,15 @@
         if (p && p.catch) p.catch(() => {});
       } catch (e) {}
     }
+  }
+
+  function resetBuildUp() {
+    list.textContent = '';
+    fine.textContent = '';
+    codeEl.textContent = '';
+    codeBox.classList.remove('on');
+    bar.style.transform = 'scaleX(0)';
+    card.classList.remove('is-working');
   }
 
   function answer(kind) {
@@ -160,23 +157,22 @@
 
     goFullscreen();
 
-    $('#letterTitle').textContent = kind === 'yes'
-      ? 'yayyy 🥹 okay wait, i wrote you something'
-      : 'okay… but read this first? 🥺';
-    const body = $('#letterBody');
-    body.textContent = '';
-    const lines = LETTER.map((l) => {
-      const el = document.createElement('p');
-      el.style.fontSize = l.size + 'px';
-      body.appendChild(el);
-      return { ...l, el, shown: -1 };
+    resetBuildUp();
+    $('#statusTitle').textContent = kind === 'yes'
+      ? 'Getting your Thursday sign in ready…'
+      : 'Just confirming you don’t need one…';
+    const steps = STEPS.map((s) => {
+      const el = document.createElement('li');
+      el.textContent = s.text;
+      return { ...s, el };
     });
-    card.classList.add('is-reading');
+    let shownCode = -1;
+    card.classList.add('is-working');
 
     // One clock for everything: the audio's position when it's playing, so
-    // the letter and the cut stay locked to the music; wall time otherwise.
+    // the build-up and the cut stay locked to the music; wall time otherwise.
     // iPhones report currentTime in coarse steps, so instead of reading it
-    // raw (which made typing stutter and the cut land late) we anchor it to
+    // raw (which made things stutter and the cut land late) we anchor it to
     // the wall clock and run smoothly from there. The earliest anchor is the
     // freshest reading; re-anchor only if playback has clearly stalled.
     let anchor = null;
@@ -192,16 +188,22 @@
 
     const tick = () => {
       const t = clock();
-      let active = -1;
-      lines.forEach((l, i) => { if (t >= l.at) active = i; });
-      lines.forEach((l, i) => {
-        const n = Math.max(0, Math.min(l.text.length, Math.floor((t - l.at) * l.cps)));
-        if (t >= l.at && n !== l.shown) {
-          l.shown = n;
-          l.el.textContent = l.text.slice(0, n);
+      // eases toward full but never quite gets there
+      const k = Math.min(Math.max(t, 0) / LEAD, 1);
+      bar.style.transform = `scaleX(${Math.min(0.94, 1 - (1 - k) * (1 - k))})`;
+      for (const s of steps) {
+        if (t >= s.at && !s.el.isConnected) list.appendChild(s.el);
+        if (t >= s.done) s.el.classList.add('done');
+      }
+      if (t >= FINE_AT && !fine.textContent) fine.textContent = FINE;
+      if (t >= CODE_AT) {
+        codeBox.classList.add('on');
+        const n = Math.min(CODE.length, Math.floor((t - CODE_AT) * CODE_CPS));
+        if (n !== shownCode) {
+          shownCode = n;
+          codeEl.textContent = CODE.slice(0, n);
         }
-        l.el.classList.toggle('typing', i === active); // caret on the line being written
-      });
+      }
       // If the audio is slow to start, give it a moment so the face lands
       // with the scream; then go anyway.
       const wall = (performance.now() - t0) / 1000;
@@ -211,8 +213,9 @@
     requestAnimationFrame(tick);
   }
 
+  // The jump, shake and flashes are CSS animations keyed off .on (see
+  // style.css), so they run on the compositor and stay smooth on phones.
   function impact(live) {
-    clearInterval(heartTimer);
     scare.classList.add('on');
     if (navigator.vibrate) navigator.vibrate([600, 80, 900, 80, 1200]);
     setTimeout(() => finish(live), SCARE * 1000);
@@ -235,7 +238,7 @@
 
   $('#again').addEventListener('click', () => {
     $('#reveal').hidden = true;
-    card.classList.remove('is-reading');
+    resetBuildUp();
     fired = false;
   });
 
@@ -245,7 +248,7 @@
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'I have a question for you 🥺💌', url: link });
+        await navigator.share({ title: 'Thursday Sign In', url: link });
         msg.textContent = 'sent';
         return;
       } catch (e) {

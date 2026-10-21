@@ -3,55 +3,49 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>I have a question for you 🥺💌</title>
-  <meta name="description" content="hiii… i've been wanting to ask you something 👉👈">
-  <meta property="og:title" content="I have a question for you 🥺💌">
-  <meta property="og:description" content="hiii… i've been wanting to ask you something 👉👈">
+  <title>Thursday Sign In</title>
+  <meta name="description" content="Do you need a Bustan sign in for Thursday?">
+  <meta property="og:title" content="Thursday Sign In">
+  <meta property="og:description" content="Do you need a Bustan sign in for Thursday?">
   <meta property="og:type" content="website">
-  <meta name="theme-color" content="#ffd6e7">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💌</text></svg>">
+  <meta name="theme-color" content="#f3f5f4">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗓️</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=7">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
-  <div id="hearts" aria-hidden="true"></div>
-
-  <main class="cute">
+  <main class="page">
     <div class="card" id="card">
       <div class="ask">
-        <svg class="bear" viewBox="0 0 120 110" aria-hidden="true">
-          <circle cx="28" cy="30" r="18" fill="#f3b27a"/><circle cx="28" cy="30" r="9" fill="#ffd9e6"/>
-          <circle cx="92" cy="30" r="18" fill="#f3b27a"/><circle cx="92" cy="30" r="9" fill="#ffd9e6"/>
-          <ellipse cx="60" cy="64" rx="46" ry="42" fill="#f6bd88"/>
-          <ellipse cx="60" cy="78" rx="20" ry="15" fill="#fde3c8"/>
-          <ellipse cx="42" cy="60" rx="5" ry="6.5" fill="#3a2430"/><circle cx="43.6" cy="57.4" r="2" fill="#fff"/>
-          <ellipse cx="78" cy="60" rx="5" ry="6.5" fill="#3a2430"/><circle cx="79.6" cy="57.4" r="2" fill="#fff"/>
-          <ellipse cx="60" cy="72" rx="5" ry="3.5" fill="#3a2430"/>
-          <path d="M53 79 q3.5 4 7 0 q3.5 4 7 0" stroke="#3a2430" stroke-width="2.2" fill="none" stroke-linecap="round"/>
-          <ellipse cx="30" cy="74" rx="8" ry="5" fill="#ff8fb1" opacity=".65"/>
-          <ellipse cx="90" cy="74" rx="8" ry="5" fill="#ff8fb1" opacity=".65"/>
-          <path d="M104 12c-3-6-12-4-11 3 1 5 11 11 11 11s10-6 11-11c1-7-8-9-11-3z" fill="#ff5c9a"/>
-        </svg>
-        <p class="hi">hiii 👉👈</p>
-        <h1 id="question">Will you go on a date with me?</h1>
-        <p class="sub">i've been wanting to ask you this for a while… 🥺</p>
+        <div class="badge"><span class="dot"></span>Thursday sign in</div>
+        <h1>Do you need a Bustan sign in for Thursday?</h1>
+        <p class="sub">Let us know so we can get yours ready.</p>
         <div class="buttons">
-          <button id="yes" type="button">Yes 💖</button>
-          <button id="no" type="button">No 😢</button>
+          <button id="yes" type="button" class="btn primary">Yes</button>
+          <button id="no" type="button" class="btn">No</button>
         </div>
-        <p class="hint">🎵 sound on, i made you something</p>
+        <p class="hint">🔔 Turn on sound for confirmation alerts</p>
       </div>
-      <div class="letter" aria-live="polite">
-        <p id="letterTitle" class="letter-title"></p>
-        <div id="letterBody" class="letter-body"></div>
+
+      <div class="progress-view" aria-live="polite">
+        <p id="statusTitle" class="status-title"></p>
+        <div class="bar"><div id="barFill" class="bar-fill"></div></div>
+        <ul id="steps" class="steps"></ul>
+        <p id="fine" class="fine"></p>
+        <div id="codeBox" class="code-box"><span id="code"></span></div>
       </div>
     </div>
   </main>
 
   <div id="scare" class="scare" aria-hidden="true">
-    <img id="photo" class="photo" src="scare.jpg?v=6" alt="" decoding="async">
+    <div class="jolt">
+      <img class="photo" src="scare.jpg?v=6" alt="" decoding="async">
+      <img class="photo neg" src="scare-neg.jpg?v=1" alt="" decoding="async">
+    </div>
+    <div class="flash white"></div>
+    <div class="flash red"></div>
   </div>
 
   <section id="reveal" class="reveal" hidden>
@@ -67,6 +61,6 @@
     </div>
   </section>
 
-  <script src="script.js?v=7"></script>
+  <script src="script.js?v=8"></script>
 </body>
 </html>
