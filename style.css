@@ -163,6 +163,15 @@ button:active { transform: translateY(3px); }
   border-radius: 20px;
 }
 .maker-title { margin-bottom: 12px; font-weight: 500; }
+#share {
+  width: 100%;
+  padding: 13px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--pink);
+  border-radius: 12px;
+}
 .share-msg { min-height: 1.2em; margin-top: 10px; font-size: 14px; color: #ff9cc2; word-break: break-all; }
 
 .again {
