@@ -74,65 +74,37 @@ h1 { margin: 16px 0 8px; font-size: 24px; font-weight: 700; line-height: 1.25; l
 
 .hint { margin-top: 16px; font-size: 12.5px; color: var(--muted); text-align: center; }
 
-/* ---------- "generating your sign in code" ---------- */
+/* ---------- step 2: your name ---------- */
 
-.progress-view { display: none; }
-.card.is-working .ask { display: none; }
-.card.is-working .progress-view { display: block; }
+.name-step { display: none; }
+.card.is-naming .ask { display: none; }
+.card.is-naming .name-step { display: block; }
 
-.status-title { font-size: 18px; font-weight: 600; line-height: 1.35; }
-
-.bar { height: 6px; margin: 16px 0 18px; overflow: hidden; background: #edf1ef; border-radius: 999px; }
-.bar-fill { width: 100%; height: 100%; background: var(--green); border-radius: inherit; transform-origin: left; transform: scaleX(0); }
-
-.steps { list-style: none; display: grid; gap: 10px; }
-.steps li { display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--ink); }
-.steps li::before {
-  content: '';
-  flex: none;
-  width: 16px;
-  height: 16px;
-  border: 2px solid #c9d3ce;
-  border-top-color: var(--green);
-  border-radius: 50%;
-  animation: spin .8s linear infinite;
-}
-.steps li.done::before {
-  content: '✓';
-  display: grid;
-  place-items: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  background: var(--green);
-  border-color: var(--green);
-  animation: none;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.fine { min-height: 1em; margin-top: 18px; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
-
-.code-box {
-  display: none;
-  margin-top: 10px;
+.label { display: block; margin: 22px 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.input {
+  width: 100%;
   padding: 14px;
-  text-align: center;
-  background: #f6f8f7;
-  border: 1px dashed #c9d3ce;
+  font: inherit;
+  font-size: 17px; /* 16px+ stops iPhones zooming in on focus */
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid #cfd8d3;
   border-radius: 12px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-user-select: text;
+  user-select: text;
 }
-.code-box.on { display: block; }
-#code { font: 600 13px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .35em; }
-#code::after { content: '▍'; margin-left: 2px; color: var(--green); animation: blink 1s steps(1) infinite; }
-@keyframes blink { 50% { opacity: 0; } }
+.input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(31, 111, 92, .15); }
+.submit { width: 100%; margin-top: 12px; }
+.submit:disabled { opacity: .45; cursor: default; }
 
 /* ---------- the scare ---------- */
 
 /* Kept on screen from page load at near-zero opacity (not hidden), so the
-   phone has already drawn the photos and the cut is an instant opacity flip.
-   Un-hiding a full-screen photo can make iPhones stall for a beat first.
-   Everything below runs as CSS animations on the compositor, so it stays
-   smooth on phones. */
+   phone has already drawn the video's first frame and the cut is an instant
+   opacity flip. Un-hiding a full-screen layer can make iPhones stall first. */
 .scare {
   position: fixed;
   inset: 0;
@@ -144,79 +116,10 @@ h1 { margin: 16px 0 8px; font-size: 24px; font-weight: 700; line-height: 1.25; l
   will-change: opacity;
 }
 .scare.on { opacity: 1; }
-
-.jolt { position: absolute; inset: 0; will-change: transform; }
-
-.photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% 40%;
-  will-change: transform, opacity;
-}
-/* on wide screens show the whole face; its black edges melt into the background */
-@media (min-aspect-ratio: 4/5) { .photo { object-fit: contain; object-position: 50% 50%; } }
-.photo.neg { opacity: .001; }
-
-.flash { position: absolute; inset: 0; opacity: 0; will-change: opacity; }
-.flash.white { background: #fff; }
-.flash.red { background: #c00010; }
-
-/* It jumps at you: slams in from huge, snaps into place with a hard shake,
-   then lunges again about a second in. */
-.scare.on .jolt { animation: lunge 1.6s linear both; }
-@keyframes lunge {
-  0%   { transform: scale(1.7); }
-  8%   { transform: scale(1.1) translate(16px, -12px); animation-timing-function: steps(1); }
-  12%  { transform: scale(1.1) translate(-18px, 14px) rotate(-1.5deg); animation-timing-function: steps(1); }
-  16%  { transform: scale(1.1) translate(14px, 10px) rotate(1.5deg); animation-timing-function: steps(1); }
-  20%  { transform: scale(1.1) translate(-12px, -14px); animation-timing-function: steps(1); }
-  24%  { transform: scale(1.1) translate(9px, 7px); animation-timing-function: steps(1); }
-  28%  { transform: scale(1.1); }
-  64%  { transform: scale(1.1); }
-  68%  { transform: scale(1.3) translate(-14px, 10px); animation-timing-function: steps(1); }
-  72%  { transform: scale(1.2) translate(12px, -8px); animation-timing-function: steps(1); }
-  76%  { transform: scale(1.2) translate(-8px, 6px); animation-timing-function: steps(1); }
-  80%  { transform: scale(1.2); }
-  100% { transform: scale(1.2); }
-}
-
-/* then a slow creep toward you while it screams */
-.scare.on .photo { animation: creep 3.2s linear both; }
-@keyframes creep { from { transform: scale(1); } to { transform: scale(1.06); } }
-
-/* Flashes, spaced 0.35 s apart so there are never more than three in any
-   one second (the standard photosensitive-seizure safety limit):
-   0.00 white · 0.35 negative face · 0.70 white · 1.05 red · 1.40 negative face */
-.scare.on .flash.white { animation: flash-white 1.5s linear both; }
-@keyframes flash-white {
-  0% { opacity: 1; }
-  7% { opacity: 0; }
-  46.6% { opacity: 0; }
-  46.7% { opacity: .95; }
-  52% { opacity: 0; }
-  100% { opacity: 0; }
-}
-.scare.on .flash.red { animation: flash-red 1.5s linear both; }
-@keyframes flash-red {
-  0%, 69.9% { opacity: 0; }
-  70% { opacity: .75; }
-  76% { opacity: 0; }
-  100% { opacity: 0; }
-}
-.scare.on .photo.neg { animation: flash-neg 1.6s linear both; }
-@keyframes flash-neg {
-  0%, 21.8% { opacity: 0; }
-  21.9%, 27% { opacity: 1; }
-  27.1%, 87.4% { opacity: 0; }
-  87.5%, 93% { opacity: 1; }
-  93.1%, 100% { opacity: 0; }
-}
+.scare-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 /* hard cut to black before the reveal */
-.scare.black .jolt, .scare.black .flash { visibility: hidden; }
+.scare.black .scare-video { visibility: hidden; }
 
 /* ---------- reveal ---------- */
 

@@ -1,12 +1,9 @@
 # Thursday Sign In
 
-A prank page that asks "Do you need a Bustan sign in for Thursday?" Both **Yes** and **No** lead to a jumpscare.
+A prank page that asks "Do you need a Bustan sign in for Thursday?" Either answer leads to step 2, "Add your name to the sign in sheet". When they type the first letter of their name, the keyboard closes and a jumpscare video (`scare.mp4`) plays full screen with sound.
 
-- After the tap, a "getting your sign in ready" screen runs for about 8.6 seconds. Steps tick off, a progress bar crawls, and a confirmation code types out slowly in small print. Then it hard-cuts to a full-screen face with a scream.
-- The face slams in from huge, shakes, and lunges again. White, negative-image and red flashes play over it, spaced so there are never more than three in any second.
-- Made for phones: plays sound even with the iPhone silent switch on, and vibrates on Android. All effects are CSS animations, so they stay smooth.
-- The sound is `scream.mp3`: a soft music box from `tools/make-scream.html` with a recorded scream spliced in at 8.6 s (`LEAD` in `script.js`). The tool page has the ffmpeg command.
-- The face is `scare.jpg`, and `scare-neg.jpg` is its inverted copy for the flashes.
+- Made for phones. iPhones only allow a video to play with sound if it was started by a tap, so each tap plays the clip from its 0.4 s silent start and pauses it straight away. That lets the keystroke play it later. It plays as media, so the silent switch doesn't mute it.
+- The scare layer stays on screen at near-zero opacity, so the cut is instant.
 - After the scare, a 😂 screen with "Send the link", "watch it again", and a "Made by SK" watermark.
 
 ## Host it on GitHub Pages

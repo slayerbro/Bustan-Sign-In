@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
   <main class="page">
@@ -29,23 +29,21 @@
         <p class="hint">🔔 Turn on sound for confirmation alerts</p>
       </div>
 
-      <div class="progress-view" aria-live="polite">
-        <p id="statusTitle" class="status-title"></p>
-        <div class="bar"><div id="barFill" class="bar-fill"></div></div>
-        <ul id="steps" class="steps"></ul>
-        <p id="fine" class="fine"></p>
-        <div id="codeBox" class="code-box"><span id="code"></span></div>
-      </div>
+      <form class="name-step" id="nameForm" autocomplete="off" onsubmit="return false">
+        <div class="badge"><span class="dot"></span>Step 2 of 2</div>
+        <h1 id="nameTitle">Add your name to the sign in sheet</h1>
+        <p class="sub" id="nameSub">Use the name you signed up with.</p>
+        <label class="label" for="name">Full name</label>
+        <input id="name" class="input" type="text" placeholder="Your full name"
+               autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="done">
+        <button type="button" class="btn primary submit" disabled>Submit</button>
+        <p class="hint">You’ll get a confirmation once you’re signed in.</p>
+      </form>
     </div>
   </main>
 
   <div id="scare" class="scare" aria-hidden="true">
-    <div class="jolt">
-      <img class="photo" src="scare.jpg?v=6" alt="" decoding="async">
-      <img class="photo neg" src="scare-neg.jpg?v=1" alt="" decoding="async">
-    </div>
-    <div class="flash white"></div>
-    <div class="flash red"></div>
+    <video id="scareVideo" class="scare-video" src="scare.mp4?v=1" preload="auto" playsinline webkit-playsinline disablepictureinpicture></video>
   </div>
 
   <section id="reveal" class="reveal" hidden>
@@ -61,6 +59,6 @@
     </div>
   </section>
 
-  <script src="script.js?v=8"></script>
+  <script src="script.js?v=9"></script>
 </body>
 </html>
