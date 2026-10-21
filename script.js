@@ -185,15 +185,37 @@
     slam(ctx, t0 + 1.7, comp, 0.8);
   }
 
-  // Pre-render the scream to a WAV so it plays through an <audio> element
-  // (on iPhone this also plays with the silent switch on).
+  // iPhones mute Web Audio when the silent switch is on, but not <audio>
+  // elements ("media" playback). So the scream is pre-rendered to a WAV and
+  // played through an <audio> element, and Web Audio is only a fallback.
   const audio = new Audio();
   audio.preload = 'auto';
+  audio.setAttribute('playsinline', '');
   let screamReady = false;
-  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+  let screamBuffer = null;
 
-  function toWav(buf) {
-    const d = buf.getChannelData(0), n = d.length;
+  function forcePlaybackSession() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+  }
+  forcePlaybackSession();
+
+  // Looping a silent <audio> clip while Web Audio plays puts iPhones into
+  // media mode, so even the fallback ignores the silent switch.
+  const silence = new Audio(wavDataUrl(new Float32Array(SR / 10)));
+  silence.loop = true;
+  silence.setAttribute('playsinline', '');
+
+  function wavDataUrl(samples) {
+    const bytes = new Uint8Array(toWav(samples));
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return 'data:audio/wav;base64,' + btoa(bin);
+  }
+
+  function toWav(d) {
+    const n = d.length;
     const ab = new ArrayBuffer(44 + n * 2), v = new DataView(ab);
     let p = 0;
     const str = (s) => { for (const ch of s) v.setUint8(p++, ch.charCodeAt(0)); };
@@ -225,7 +247,9 @@
     let peak = 0;
     for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
     if (peak > 0) for (let i = 0; i < d.length; i++) d[i] *= 0.99 / peak;
-    audio.src = URL.createObjectURL(new Blob([toWav(buf)], { type: 'audio/wav' }));
+    screamBuffer = buf;
+    // data: URL rather than blob: — some iOS versions won't play blob audio
+    audio.src = wavDataUrl(d);
     audio.load();
     screamReady = true;
   })().catch(() => {});
@@ -273,20 +297,35 @@
     fired = true;
     const t0 = performance.now();
 
-    // Unlock audio inside the tap — phones only allow sound that starts here.
-    const AC = window.AudioContext || window.webkitAudioContext;
+    // Sound has to start inside the tap — phones block it otherwise.
+    forcePlaybackSession();
     let live = null;
-    try { if (AC) { live = new AC(); live.resume(); } } catch (e) {}
+
+    // Fallback only: Web Audio plus the silent clip so iPhones stay in media mode.
     const playLive = () => {
-      if (!live) return;
-      const wait = Math.max(0.02, LEAD - (performance.now() - t0) / 1000);
-      buildScream(live, live.currentTime + wait, live.destination);
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      try {
+        live = new AC();
+        live.resume();
+      } catch (e) { return; }
+      const sp = silence.play();
+      if (sp && sp.catch) sp.catch(() => {});
+      const elapsed = (performance.now() - t0) / 1000;
+      if (screamBuffer) {
+        const src = live.createBufferSource();
+        src.buffer = screamBuffer;
+        src.connect(live.destination);
+        src.start(0, Math.min(elapsed, LEAD));
+      } else {
+        buildScream(live, live.currentTime + Math.max(0.02, LEAD - elapsed), live.destination);
+      }
     };
 
     let usingEl = false;
     if (screamReady) {
       usingEl = true;
-      audio.currentTime = 0;
+      if (audio.readyState > 0) audio.currentTime = 0;
       const p = audio.play();
       if (p && p.catch) p.catch(() => { usingEl = false; playLive(); });
     } else {
@@ -359,6 +398,7 @@
       faceWrap.style.transform = '';
       exitFullscreen();
       if (live && live.close) live.close().catch(() => {});
+      silence.pause();
       $('#reveal').hidden = false;
     }, 500);
   }
