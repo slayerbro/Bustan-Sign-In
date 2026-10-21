@@ -41,9 +41,7 @@ body {
   max-width: 380px;
   padding: 26px 22px 22px;
   text-align: center;
-  background: rgba(255, 255, 255, .88);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: rgba(255, 255, 255, .93);
   border-radius: 28px;
   box-shadow: 0 20px 50px -18px rgba(214, 51, 132, .45), 0 0 0 4px rgba(255, 255, 255, .6);
 }
@@ -103,15 +101,16 @@ button:active { transform: translateY(3px); }
 .scare.on { visibility: visible; }
 .scare.out { opacity: 0; transition: opacity .5s; }
 
-#static {
+#static { position: absolute; inset: 0; opacity: .14; }
+#static canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: .16;
   image-rendering: pixelated;
-  mix-blend-mode: screen;
+  opacity: 0;
 }
+#static canvas.on { opacity: 1; }
 
 .vignette {
   position: absolute;
@@ -122,14 +121,21 @@ button:active { transform: translateY(3px); }
 @keyframes throb { to { opacity: .45; } }
 
 .face-wrap {
+  /* on tall phone screens the face spills past the edges so it fills the screen */
+  --fw: max(min(100vw, 78vh), 64vh);
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
   will-change: transform;
 }
-/* On tall phone screens the face spills past the edges so it fills the screen */
-#face { display: block; width: max(min(100vw, 78vh), 64vh); height: auto; }
+.face-wrap > * { grid-area: 1 / 1; }
+#face { display: block; width: var(--fw); height: auto; }
+.face-wrap.baked #face { display: none; }
+
+/* pre-rendered face bitmaps (4% glitch padding each side); only one shows */
+.frame { display: block; width: calc(var(--fw) * 1.08); height: auto; opacity: 0; }
+.frame.on { opacity: 1; }
 
 /* a one-frame glimpse of the face during the "wait, one sec…" */
 .scare.peek { visibility: visible; background: transparent; }
@@ -137,7 +143,8 @@ button:active { transform: translateY(3px); }
 .scare.peek .face-wrap { opacity: .35; transform: scale(.9); }
 
 /* single negative-image hit when the face lunges */
-.scare.negative { filter: invert(1) hue-rotate(180deg) contrast(1.4); }
+.scare.negative { background: #fff; }
+.scare.negative .vignette, .scare.negative #static { opacity: 0; }
 
 .flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
 .scare.on .flash { animation: flash .28s ease-out; }
